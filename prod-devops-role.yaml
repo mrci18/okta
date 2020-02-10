@@ -1,0 +1,35 @@
+Resources:
+  ProdDevOpsRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Federated: !Ref SAMLARN
+          Action: sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals: 
+              SAML:aud: "https://signin.aws.amazon.com/saml"
+
+  ListMFAPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: ListMFA
+      Roles: 
+      - !Ref ProdDevOpsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowIndividualUserToListOnlyTheirOwnMFA
+            Effect: Allow
+            Action:
+            - iam:ListMFADevices
+            Resource:
+            - arn:aws:iam::*:mfa/*
+
+Parameters:
+  SAMLARN:
+    Description: The SAML ARN of the IdP that you set on AWS
+    Type: String

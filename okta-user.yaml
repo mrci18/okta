@@ -1,0 +1,29 @@
+Resources:
+  OktaUser:
+    Type: AWS::IAM::User
+    Properties: 
+      UserName: !Ref OktaUsername
+
+  OktaMasterPolicy:
+    Type: AWS::IAM::Policy
+    Properties: 
+      PolicyName: OktaMasterPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - iam:GetAccountSummary
+          - iam:ListRoles
+          - iam:ListAccountAliases
+          - iam:GetUser
+          - sts:AssumeRole
+          Resource: "*"
+      Users: 
+        - !Ref OktaUser
+
+Parameters:
+  OktaUsername:
+    Description: IAM user used by Okta
+    Type: String
+    Default: okta-master
