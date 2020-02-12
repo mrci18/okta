@@ -13,23 +13,112 @@ Resources:
             StringEquals: 
               SAML:aud: "https://signin.aws.amazon.com/saml"
 
-  ListMFAPolicy:
+  DevOpsPolicy:
     Type: 'AWS::IAM::Policy'
     Properties:
-      PolicyName: ListMFA
+      PolicyName: DevOps
       Roles: 
       - !Ref ProdDevOpsRole
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Sid: AllowIndividualUserToListOnlyTheirOwnMFA
-            Effect: Allow
-            Action:
-            - iam:ListMFADevices
-            Resource:
-            - arn:aws:iam::*:mfa/*
+        - Sid: CatchAll
+          Effect: Allow
+          Action:
+          - acm:*
+          - apigateway:*
+          - athena:*
+          - backup:*
+          - cloudformation:*
+          - cloudfront:*
+          - cloudwatch:*
+          - config:*
+          - dynamodb:*
+          - ec2:*
+          - elasticfilesystem:*
+          - elasticloadbalancing:*
+          - events:*
+          - execute-api:*
+          - glacier:*
+          - iam:List*
+          - iam:Get*
+          - iam:CreateRole
+          - iam:CreatePolicy
+          - iam:AttachRolePolicy
+          - iam:PutRolePolicy
+          - iam:PassRole
+          - kms:Decrypt
+          - kms:ReEncrypt*
+          - kms:GenerateDataKey*
+          - kms:Encrypt
+          - kms:GetKeyRotationStatus
+          - kms:RevokeGrant
+          - kms:PutKeyPolicy
+          - kms:TagResource
+          - kms:DescribeKey
+          - kms:CreateKey
+          - kms:CreateGrant
+          - kms:ListKeyPolicies
+          - kms:GetKeyPolicy
+          - kms:ListGrants
+          - kms:ListKeys
+          - kms:ListAliases
+          - kms:CreateAlias
+          - lambda:*
+          - rds:*
+          - route53:ChangeResourceRecordSets
+          - route53:DeleteRecordSets
+          - route53:ListResourceRecordSets
+          - ses:*
+          - sns:*
+          - sts:*
+          - support:*
+          - s3:*
+          - waf:*
+          Resource: "*"
+        - Sid: CloudTrail
+          Effect: Deny
+          Action:
+          - cloudtrail:StopLogging
+          - cloudtrail:DeleteTrail
+          - cloudtrail:CreateTrail
+          - cloudtrail:RemoveTags
+          Resource: "*"
+
+  ProdDBARole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns: 
+      - arn:aws:iam::aws:policy/job-function/DatabaseAdministrator 
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Federated: !Ref SAMLARN
+          Action: sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals: 
+              SAML:aud: "https://signin.aws.amazon.com/saml"
+
+  DBAPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: DBA
+      Roles: 
+      - !Ref ProdDBARole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: AthenaDMSGlue
+          Effect: Allow
+          Action:
+          - athena:*
+          - dms:*
+          - glue:*
+          Resource: "*"
 
 Parameters:
   SAMLARN:
-    Description: The SAML ARN of the IdP that you set on AWS
+    Description: The SAML ARN of the IdP in this account
     Type: String

@@ -1,0 +1,32 @@
+Resources:
+  IdPCrossAccountRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: Okta-Idp-cross-account-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS: !Sub arn:aws:iam::${OktaMasterAccountID}:root
+          Action: sts:AssumeRole
+          
+  OktaIdPPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: OktaIdP
+      Roles:
+        - Ref: IdPCrossAccountRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - iam:ListRoles
+          - iam:ListAccountAliases
+          Resource: "*"
+
+Parameters:
+  OktaMasterAccountID:
+    Description: AWS account ID (This is the account that has the access/secret key being used in Okta)  
+    Type: String
