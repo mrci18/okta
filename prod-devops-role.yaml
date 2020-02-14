@@ -13,6 +13,58 @@ Resources:
             StringEquals: 
               SAML:aud: "https://signin.aws.amazon.com/saml"
 
+  IAMCreatePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: DevOps
+      Roles: 
+      - !Ref ProdDevOpsRole
+      - !Ref ProdDBARole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: IAMView
+          Effect: Allow
+          Action:
+          - iam:List*
+          - iam:Get*
+          Resource: "*"
+        - Sid: NoBoundaryEdit
+          Effect: Deny
+          Action: 
+          - iam:CreatePolicyVersion
+          - iam:DeletePolicy
+          - iam:DeletePolicyVersion
+          - iam:SetDefaultPolicyVersion
+          Resource: !Sub arn:aws:iam::${AWS::AccountId}:policy/PermissionsManagementBoundary
+        - Sid: PutPB
+          Effect: Allow
+          Action: 
+          - iam:PutRolePermissionsBoundary
+          Resource: "*"
+          # Condition: 
+          #   StringEquals: 
+          #     iam:PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/PermissionsManagementBoundary
+          # Maybe add condition for specific permission boundary
+        - Sid: IAM 
+          Effect: Allow
+          Action:
+          - iam:CreateRole
+          - iam:CreatePolicy
+          Resource: "*"
+          Condition: 
+            StringEquals: 
+              iam:PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/PermissionsManagementBoundary
+        - Sid: OnlyAttachPolicyWithPermissionBoundary
+          Effect: Allow
+          Action:
+          - iam:AttachRolePolicy
+          - iam:PutRolePolicy
+          Resource: "*"
+          Condition: 
+            StringEquals: 
+              iam:PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/PermissionsManagementBoundary
+
   DevOpsPolicy:
     Type: 'AWS::IAM::Policy'
     Properties:
@@ -40,12 +92,8 @@ Resources:
           - events:*
           - execute-api:*
           - glacier:*
-          - iam:List*
-          - iam:Get*
-          - iam:CreateRole
-          - iam:CreatePolicy
-          - iam:AttachRolePolicy
-          - iam:PutRolePolicy
+          # - iam:List*
+          # - iam:Get*
           - iam:PassRole
           - kms:Decrypt
           - kms:ReEncrypt*
@@ -84,10 +132,55 @@ Resources:
           - cloudtrail:CreateTrail
           - cloudtrail:RemoveTags
           Resource: "*"
+        - Sid: TrustedAdvisor
+          Action:
+          - trustedadvisor:ExcludeCheckItems
+          - trustedadvisor:RefreshCheck
+          Effect: Allow
+          Resource: "*"
+
+  PermissionsManagementPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      ManagedPolicyName: PermissionsManagementBoundary
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Allow
+          Effect: Allow
+          Action: "*"
+          Resource: "*"
+        - Sid: Deny 
+          Effect: Deny
+          Action:
+          - iam:UpdateAssumeRolePolicy
+          - iam:DeleteAccountPasswordPolicy
+          - iam:PutRolePermissionsBoundary
+          - iam:PutUserPermissionsBoundary
+          - iam:AttachUserPolicy
+          - iam:DeleteUserPolicy
+          - iam:DeletePolicy
+          - iam:AttachRolePolicy
+          - iam:DeleteUserPermissionsBoundary
+          - iam:PutRolePolicy
+          - iam:DeleteRolePermissionsBoundary
+          - iam:DetachRolePolicy
+          - iam:AttachGroupPolicy
+          - iam:DeleteRolePolicy
+          - iam:PutUserPolicy
+          - iam:DetachGroupPolicy
+          - iam:CreatePolicyVersion
+          - iam:DeleteGroupPolicy
+          - iam:DetachUserPolicy
+          - iam:DeletePolicyVersion
+          - iam:PutGroupPolicy
+          - iam:SetDefaultPolicyVersion
+          Resource: "*"
 
   ProdDBARole:
     Type: 'AWS::IAM::Role'
     Properties:
+      PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/PermissionsManagementBoundary
       ManagedPolicyArns: 
       - arn:aws:iam::aws:policy/job-function/DatabaseAdministrator 
       AssumeRolePolicyDocument:
@@ -117,6 +210,23 @@ Resources:
           - dms:*
           - glue:*
           Resource: "*"
+
+  ReadOnlyRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns: 
+      - arn:aws:iam::aws:policy/ReadOnlyAccess
+      PermissionsBoundary: arn:aws:iam::aws:policy/ReadOnlyAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Federated: !Ref SAMLARN
+          Action: sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals: 
+              SAML:aud: "https://signin.aws.amazon.com/saml"
 
 Parameters:
   SAMLARN:
