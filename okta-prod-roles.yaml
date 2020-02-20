@@ -1,0 +1,502 @@
+Resources:
+### Admin ###
+  # Should we have admin as actual account on AWS?
+  ProdAdminRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns: 
+      - arn:aws:iam::aws:policy/AdministratorAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Federated: !Ref SAMLARN
+          Action: sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals: 
+              SAML:aud: "https://signin.aws.amazon.com/saml"
+
+### DBA ###
+  ProdDBARole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns: 
+      - arn:aws:iam::aws:policy/job-function/DatabaseAdministrator 
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Federated: !Ref SAMLARN
+          Action: sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals: 
+              SAML:aud: "https://signin.aws.amazon.com/saml"
+
+  DBAPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: DBAExtra
+      Roles: 
+      - !Ref ProdDBARole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: DMS
+          Effect: Allow
+          Action:
+          - dms:*
+          Resource: "*"
+
+  # If team needs the ability to create IAM for team members, use this policy as a template on how to give them the capability
+  # Attach it to team role
+    # This policy says that the role it is attached to can create a role and policy ONLY IF a specific permission boundary is attached
+  # Create a separate permission boundary that has the same limit as team policy (excluding ability to create policy) 
+    # Example below under "DBA Permission Boundary"
+  DBAIAMPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: DBAIAM
+      Roles: 
+      - !Ref ProdDBARole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: IAMView
+          Effect: Allow
+          Action:
+          - iam:List*
+          - iam:Get*
+          Resource: "*"
+        - Sid: NoBoundaryEdit
+          Effect: Deny
+          Action: 
+          - iam:CreatePolicyVersion
+          - iam:DeletePolicy
+          - iam:DeletePolicyVersion
+          - iam:SetDefaultPolicyVersion
+          Resource: !Sub arn:aws:iam::${AWS::AccountId}:policy/Okta*
+        - Sid: PutPB
+          Effect: Allow
+          Action: 
+          - iam:PutRolePermissionsBoundary
+          Resource: "*"
+        - Sid: IAMCreate 
+          Effect: Allow
+          Action:
+          - iam:CreateRole
+          - iam:CreatePolicy
+          Resource: "*"
+          Condition: 
+            StringEquals: 
+              iam:PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/OktaDBABoundary
+        - Sid: OnlyAttachPolicyWithPermissionBoundary
+          Effect: Allow
+          Action:
+          - iam:AttachRolePolicy
+          - iam:PutRolePolicy
+          Resource: "*"
+          Condition: 
+            StringEquals: 
+              iam:PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/OktaDBABoundary
+
+##DBA Permission Boundary
+  DBABoundaryPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      ManagedPolicyName: OktaDBABoundary
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: DatabaseAdministrator1
+          Effect: Allow
+          Action:
+          - cloudwatch:DeleteAlarms
+          - cloudwatch:Describe*
+          - cloudwatch:DisableAlarmActions
+          - cloudwatch:EnableAlarmActions
+          - cloudwatch:Get*
+          - cloudwatch:List*
+          - cloudwatch:PutMetricAlarm
+          - datapipeline:ActivatePipeline
+          - datapipeline:CreatePipeline
+          - datapipeline:DeletePipeline
+          - datapipeline:DescribeObjects
+          - datapipeline:DescribePipelines
+          - datapipeline:GetPipelineDefinition
+          - datapipeline:ListPipelines
+          - datapipeline:PutPipelineDefinition
+          - datapipeline:QueryObjects
+          - dynamodb:*
+          - ec2:DescribeAccountAttributes
+          - ec2:DescribeAddresses
+          - ec2:DescribeAvailabilityZones
+          - ec2:DescribeInternetGateways
+          - ec2:DescribeSecurityGroups
+          - ec2:DescribeSubnets
+          - ec2:DescribeVpcs
+          - elasticache:*
+          - iam:ListRoles
+          - iam:GetRole
+          - kms:ListKeys
+          - lambda:CreateEventSourceMapping
+          - lambda:CreateFunction
+          - lambda:DeleteEventSourceMapping
+          - lambda:DeleteFunction
+          - lambda:GetFunctionConfiguration
+          - lambda:ListEventSourceMappings
+          - lambda:ListFunctions
+          - logs:DescribeLogGroups
+          - logs:DescribeLogStreams
+          - logs:FilterLogEvents
+          - logs:GetLogEvents
+          - logs:Create*
+          - logs:PutLogEvents
+          - logs:PutMetricFilter
+          - rds:*
+          - redshift:*
+          - s3:CreateBucket
+          - sns:CreateTopic
+          - sns:DeleteTopic
+          - sns:Get*
+          - sns:List*
+          - sns:SetTopicAttributes
+          - sns:Subscribe
+          - sns:Unsubscribe
+          Resource: "*"
+        - Sid: DatabaseAdministrator2
+          Effect: Allow
+          Action:
+          - s3:AbortMultipartUpload
+          - s3:DeleteObject*
+          - s3:Get*
+          - s3:List*
+          - s3:PutAccelerateConfiguration
+          - s3:PutBucketTagging
+          - s3:PutBucketVersioning
+          - s3:PutBucketWebsite
+          - s3:PutLifecycleConfiguration
+          - s3:PutReplicationConfiguration
+          - s3:PutObject*
+          - s3:Replicate*
+          - s3:RestoreObject
+          Resource:
+          - "*"
+        - Sid: DatabaseAdministrator3
+          Effect: Allow
+          Action:
+          - iam:PassRole
+          Resource:
+          - arn:aws:iam::*:role/rds-monitoring-role
+          - arn:aws:iam::*:role/rdbms-lambda-access
+          - arn:aws:iam::*:role/lambda_exec_role
+          - arn:aws:iam::*:role/lambda-dynamodb-*
+          - arn:aws:iam::*:role/lambda-vpc-execution-role
+          - arn:aws:iam::*:role/DataPipelineDefaultRole
+          - arn:aws:iam::*:role/DataPipelineDefaultResourceRole
+        - Sid: DBAExtraDMS
+          Effect: Allow
+          Action: 
+          - dms:*
+          Resource: "*"
+        
+### DevOps ###
+  ProdDevOpsRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Federated: !Ref SAMLARN
+          Action: sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals: 
+              SAML:aud: "https://signin.aws.amazon.com/saml"
+
+  DevOpsPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: DevOps
+      Roles: 
+      - !Ref ProdDevOpsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: CatchAll
+          Effect: Allow
+          Action:
+          - acm:*
+          - apigateway:*
+          - athena:*
+          - backup:*
+          - cloudformation:*
+          - cloudfront:*
+          - cloudwatch:*
+          - config:*
+          - dynamodb:*
+          - ec2:*
+          - elasticfilesystem:*
+          - elasticloadbalancing:*
+          - events:*
+          - execute-api:*
+          - glacier:*
+          - iam:PassRole
+          - kms:CreateAlias
+          - kms:CreateGrant
+          - kms:CreateKey
+          - kms:Decrypt
+          - kms:Describe*
+          - kms:Encrypt
+          - kms:GenerateDataKey*
+          - kms:GetKeyPolicy
+          - kms:GetKeyRotationStatus
+          - kms:PutKeyPolicy
+          - kms:ReEncrypt*
+          - kms:RevokeGrant
+          - kms:TagResource
+          - kms:List*
+          - lambda:*
+          - rds:*
+          - route53:ChangeResourceRecordSets
+          - route53:DeleteRecordSets
+          - route53:ListResourceRecordSets
+          - ses:*
+          - sns:*
+          - sts:*
+          - support:*
+          - s3:*
+          - waf:*
+          Resource: "*"
+        - Sid: CloudTrail
+          Effect: Deny
+          Action:
+          - cloudtrail:StopLogging
+          - cloudtrail:DeleteTrail
+          - cloudtrail:CreateTrail
+          - cloudtrail:RemoveTags
+          Resource: "*"
+        - Sid: TrustedAdvisor
+          Action:
+          - trustedadvisor:ExcludeCheckItems
+          - trustedadvisor:RefreshCheck
+          Effect: Allow
+          Resource: "*"
+
+  DevOpsIAMPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: DevOpsIAM
+      Roles: 
+      - !Ref ProdDevOpsRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: IAMView
+          Effect: Allow
+          Action:
+          - iam:List*
+          - iam:Get*
+          Resource: "*"
+        - Sid: NoBoundaryEdit
+          Effect: Deny
+          Action: 
+          - iam:CreatePolicyVersion
+          - iam:DeletePolicy
+          - iam:DeletePolicyVersion
+          - iam:SetDefaultPolicyVersion
+          Resource: !Sub arn:aws:iam::${AWS::AccountId}:policy/Okta*
+        - Sid: PutPB
+          Effect: Allow
+          Action: 
+          - iam:PutRolePermissionsBoundary
+          Resource: "*"
+        - Sid: IAMCreate 
+          Effect: Allow
+          Action:
+          - iam:CreateRole
+          - iam:CreatePolicy
+          Resource: "*"
+          Condition: 
+            StringEquals: 
+              iam:PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/OktaDevOpsBoundary
+        - Sid: OnlyAttachPolicyWithPermissionBoundary
+          Effect: Allow
+          Action:
+          - iam:AttachRolePolicy
+          - iam:PutRolePolicy
+          Resource: "*"
+          Condition: 
+            StringEquals: 
+              iam:PermissionsBoundary: !Sub arn:aws:iam::${AWS::AccountId}:policy/OktaDevOpsBoundary
+
+##DevOps Permission Boundary
+  DevOpsBoundaryPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      ManagedPolicyName: OktaDevOpsBoundary
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: CatchAll
+          Effect: Allow
+          Action:
+          - acm:*
+          - apigateway:*
+          - athena:*
+          - backup:*
+          - cloudformation:*
+          - cloudfront:*
+          - cloudwatch:*
+          - config:*
+          - dynamodb:*
+          - ec2:*
+          - elasticfilesystem:*
+          - elasticloadbalancing:*
+          - events:*
+          - execute-api:*
+          - glacier:*
+          - iam:PassRole
+          - kms:CreateAlias
+          - kms:CreateGrant
+          - kms:CreateKey
+          - kms:Decrypt
+          - kms:Describe*
+          - kms:Encrypt
+          - kms:GenerateDataKey*
+          - kms:GetKeyPolicy
+          - kms:GetKeyRotationStatus
+          - kms:PutKeyPolicy
+          - kms:ReEncrypt*
+          - kms:RevokeGrant
+          - kms:TagResource
+          - kms:List*
+          - lambda:*
+          - rds:*
+          - route53:ChangeResourceRecordSets
+          - route53:DeleteRecordSets
+          - route53:ListResourceRecordSets
+          - ses:*
+          - sns:*
+          - sts:*
+          - support:*
+          - s3:*
+          - waf:*
+          Resource: "*"
+        - Sid: CloudTrailDeny
+          Effect: Deny
+          Action:
+          - cloudtrail:CreateTrail
+          - cloudtrail:DeleteTrail
+          - cloudtrail:RemoveTags
+          - cloudtrail:StopLogging
+          Resource: "*"
+        - Sid: TrustedAdvisor
+          Action:
+          - trustedadvisor:ExcludeCheckItems
+          - trustedadvisor:RefreshCheck
+          Effect: Allow
+          Resource: "*"
+        
+### Infra ###
+  ProdInfraRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns:
+      # Broad permissions for now because we don't want to interrupt Infra workflow
+      # Infra also doesn't seem like they need to create IAM roles 
+      - arn:aws:iam::aws:policy/AmazonEC2FullAccess 
+      - arn:aws:iam::aws:policy/AmazonRoute53FullAccess
+      - arn:aws:iam::aws:policy/AmazonRoute53ResolverFullAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Federated: !Ref SAMLARN
+          Action: sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals: 
+              SAML:aud: "https://signin.aws.amazon.com/saml"
+
+  InfraPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: InfraExtra
+      Roles: 
+      - !Ref ProdInfraRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: SES
+          Effect: Allow
+          Action:
+          - ses:VerifyEmailAddress
+          - ses:VerifyEmailIdentity
+          Resource: "*"
+
+### Network ###
+  ProdNetworkRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/job-function/NetworkAdministrator
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Federated: !Ref SAMLARN
+          Action: sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals: 
+              SAML:aud: "https://signin.aws.amazon.com/saml"
+
+### Read Only ###
+  ReadOnlyRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns: 
+      - arn:aws:iam::aws:policy/AWSSupportAccess
+      - arn:aws:iam::aws:policy/ReadOnlyAccess
+      PermissionsBoundary: arn:aws:iam::aws:policy/ReadOnlyAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Federated: !Ref SAMLARN
+          Action: sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals: 
+              SAML:aud: "https://signin.aws.amazon.com/saml"
+
+### Security ###
+  #Needs to be matured, what is security's responsibility? Security groups
+  #Very similar to read only access right now
+  ProdSecurityRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns: 
+      - arn:aws:iam::aws:policy/AWSCloudTrailReadOnlyAccess
+      - arn:aws:iam::aws:policy/AWSWAFFullAccess
+      - arn:aws:iam::aws:policy/CloudWatchLogsReadOnlyAccess
+      - arn:aws:iam::aws:policy/SecurityAudit
+      PermissionsBoundary: arn:aws:iam::aws:policy/ReadOnlyAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Federated: !Ref SAMLARN
+          Action: sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals: 
+              SAML:aud: "https://signin.aws.amazon.com/saml"
+
+Parameters:
+  SAMLARN:
+    Description: The SAML ARN of the IdP in this account
+    Type: String
