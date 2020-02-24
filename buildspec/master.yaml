@@ -10,7 +10,7 @@ phases:
 
   build:
     commands:
-      - echo "Master"
+      - echo "Master edit 1"
       # Set VPCID env variable
   post_build:
     commands:
