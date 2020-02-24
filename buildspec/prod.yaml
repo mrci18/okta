@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+  pre_build:
+    commands:
+      - pwd
+
+  build:
+    commands:
+      - echo "Prod"
+      # Set VPCID env variable
+  post_build:
+    commands:
+      - echo Done!
