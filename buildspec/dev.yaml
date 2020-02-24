@@ -10,7 +10,8 @@ phases:
 
   build:
     commands:
-      - echo "dev"
+      - echo "Deploy Standard Okta Roles"
+      - echo "Deploy Dev specific roles"
       # Set VPCID env variable
   post_build:
     commands:

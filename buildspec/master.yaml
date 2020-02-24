@@ -10,7 +10,7 @@ phases:
 
   build:
     commands:
-      - echo "Master edit 1"
+      - echo "Deploy CFT to Create User and set IdP"
       # Set VPCID env variable
   post_build:
     commands:
