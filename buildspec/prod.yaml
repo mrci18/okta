@@ -3,14 +3,27 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      python: 3.8
+      python: 3.7
   pre_build:
     commands:
       - pwd
 
   build:
     commands:
-      - echo "Deploy Standard Okta Roles"
+      - ls 
+      - role=$(aws sts assume-role --role-arn ${PRODDEPLOYERARN} --role-session-name okta-deployer-session --duration-seconds 900)
+      - KEY=$(echo $role |awk '{print $5}' |  tr -d '"' | tr -d ',' | tr -d '{' | tr -d '}')
+      - SECRET=$(echo $role |awk '{print $7}' |  tr -d '"' | tr -d ',' | tr -d '{' | tr -d '}')
+      - TOKEN=$(echo $role |awk '{print $9}' |  tr -d '"' | tr -d ',' | tr -d '{' | tr -d '}')
+      - export AWS_ACCESS_KEY_ID=$KEY
+      - export AWS_SESSION_TOKEN=$TOKEN
+      - export AWS_SECRET_ACCESS_KEY=$SECRET
+      - export AWS_DEFAULT_REGION=us-west-2
+      # - wget -O metadata.xml ${OktaMetadataURL} 
+      # - cat metadata.xml | tr -d '\n' | sed -e 's/"/\"/g' > out.xml
+      # - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./provider.yaml --stack-name OktaProvider --parameter-overrides MetadataDocument="$(cat out.xml)" SamlProviderName=okta --capabilities CAPABILITY_NAMED_IAM
+      - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./okta-prod-roles.yaml --stack-name Okta --parameter-overrides SAMLARN="arn:aws:iam::234350007166:saml-provider/okta" --capabilities CAPABILITY_NAMED_IAM
+      - echo "Deploy CFT to Create User and set IdP 1"
       # Set VPCID env variable
   post_build:
     commands:
