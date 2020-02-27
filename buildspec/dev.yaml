@@ -4,7 +4,6 @@ phases:
   pre_build:
     commands:
       - pwd
-      - apt-get install wget -y
       - export OktaMetadataURL=$(aws ssm get-parameters --name OktaMetdataURL --with-decryption --query "Parameters[].Value" --output text)
 
   build:
