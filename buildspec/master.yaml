@@ -1,12 +1,10 @@
 version: 0.2
 
 phases:
-  install:
-    runtime-versions:
-      python: 3.7
   pre_build:
     commands:
       - pwd
+      - apt-get install wget -y
       - export OktaMetadataURL=$(aws ssm get-parameters --name OktaMetadataURL --with-decryption --query "Parameters[].Value" --output text)
 
   build:
