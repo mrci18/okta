@@ -1,13 +1,10 @@
 version: 0.2
 
 phases:
-  install:
-    runtime-versions:
-      python: 3.7
   pre_build:
     commands:
       - pwd
-      - export OktaMetadataURL=$(aws ssm get-parameters --name OktaMetdataURL --with-decryption --query "Parameters[].Value" --output text)
+      - export OktaMetadataURL=$(aws ssm get-parameters --name OktaMetadataURL --with-decryption --query "Parameters[].Value" --output text)
 
   build:
     commands:
@@ -24,8 +21,7 @@ phases:
       - cat metadata.xml | tr -d '\n' | sed -e 's/"/\"/g' > out.xml
       - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./provider.yaml --stack-name OktaProvider --parameter-overrides MetadataDocument="$(cat out.xml)" SamlProviderName=okta --capabilities CAPABILITY_NAMED_IAM
       - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./okta-prod-roles.yaml --stack-name OktaRoles --parameter-overrides SAMLARN="arn:aws:iam::234350007166:saml-provider/okta" --capabilities CAPABILITY_NAMED_IAM
-      - echo "Deploy CFT to Create User and set IdP 1"
-      # Set VPCID env variable
+
   post_build:
     commands:
       - echo Done!
