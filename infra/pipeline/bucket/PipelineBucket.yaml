@@ -1,0 +1,29 @@
+#Ran before pipeline
+Resources:
+  CodePipelineArtifacts:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+      PublicAccessBlockConfiguration:
+        RestrictPublicBuckets: true
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+
+Outputs:
+  ArtifactStoreS3:
+    Description: The s3 bucket for codepipeline artifact stores
+    Value: !Ref CodePipelineArtifacts
+    Export:
+      Name: SecurityDeploymentBucketName
+
+  ArtifactStoreArn:
+    Description: The arn value of the s3 bucket
+    Value: !GetAtt CodePipelineArtifacts.Arn
+    Export:
+      Name: SecurityDeploymentBucketArn

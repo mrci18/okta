@@ -1,0 +1,122 @@
+Resources:
+  SecurityDeploymentStatusRule: 
+    Type: AWS::Events::Rule
+    Properties: 
+      Description: "SecurityDeploymentStatus"
+      EventPattern:
+        source:
+        - aws.codebuild
+        detail-type:
+        - CodeBuild Build State Change
+        detail:
+          build-status:
+          - FAILED
+          - IN_PROGRESS
+          - STOPPED
+          - SUCCEEDED
+      State: "ENABLED"
+      Targets: 
+        - Arn: !GetAtt SecurityDeploymentStatusLambda.Arn
+          Id: LambdaToSlack
+
+  PermissionForEventsToInvokeLambda: 
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: !Ref SecurityDeploymentStatusLambda
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt SecurityDeploymentStatusRule.Arn
+
+  SecurityDeploymentStatusLambda:
+    Type: AWS::Lambda::Function
+    Description: Invoked by a CWE when codebuild API is triggered
+    Properties:
+      Runtime: python3.7
+      MemorySize: 128
+      Timeout: 60
+      Role: !GetAtt SecurityDeploymentLambdaRole.Arn
+      Handler: index.lambda_handler
+      Code:
+        ZipFile: |
+          from urllib import request
+
+
+          import json
+          import logging
+          import os
+
+
+          import boto3
+
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          exception_message = "Exception occured"
+
+          def get_ssm_params(ssm_param):
+              logger.info(f"SSMParam: {ssm_param}")
+              ssm = boto3.client('ssm')
+              response = ssm.get_parameters(
+                  Names=[ssm_param],WithDecryption=True
+              )
+              for parameter in response['Parameters']:
+                  return parameter['Value']
+                  
+          def lambda_handler(event, context):
+              try:
+                  print("Entering lambda_handler...")
+
+                  build_status = event['detail']['build-status']
+                  project_name = event['detail']['project-name']
+                  build_id = event['detail']['build-id']
+
+                  webhook_url = get_ssm_params('SECURITY_DEPLOYMENT_SLACK')
+                  
+                  combined_message = f"*Project Name:* `{project_name}`\n*Build ID:* `{build_id}`\n*Build Status:* `{build_status}`\n"
+                  data = {
+                      "text": combined_message,
+                      "color": "#7CD197"
+                  }
+
+                  json_data = json.dumps(data)
+
+                  req = request.Request(webhook_url, data=json_data.encode('ascii'), headers={'Content-Type': 'application/json'})
+                  resp = request.urlopen(req)
+
+              except Exception:
+                  logger.exception(exception_message)
+
+  SecurityDeploymentLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+
+  SlackKMSPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: SlackKMSPolicy
+      Roles:
+        - !Ref SecurityDeploymentLambdaRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowDecryptSSM
+            Effect: Allow
+            Action:
+              - kms:Decrypt
+              - ssm:GetParameters
+            Resource:
+              # - arn:aws:kms:us-west-2:*:key/9c4c52c5-7901-404e-90b2-5e4c6adbb8db
+              - Fn::ImportValue: SecurityDeploymentKMSKeyArn
+              - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/SECURITY_DEPLOYMENT*
+
+#Output Lambda ARN

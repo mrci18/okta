@@ -1,0 +1,168 @@
+Resources:
+#References security Codebuild role ARN and security deployment bucket
+  ServiceDeployerRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub ${Service}DeployerRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AccountID}:role/SecurityCodeBuildRole
+            Action: sts:AssumeRole
+
+  ServerlessDeployPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: 'ServerlessDeployPolicy'
+      Roles: [{Ref: "ServiceDeployerRole"}]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PassRole
+            Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource: !Sub arn:aws:iam::${AccountID}:role/SecurityCodeBuildRole
+
+          - Sid: IAM
+            Effect: Allow
+            Action:
+              - iam:CreateRole
+              - iam:CreatePolicy
+              - iam:DeleteRole
+              - iam:DeletePolicy
+              - iam:DeleteRolePermissionsBoundary
+              - iam:DeleteRolePolicy
+              - iam:DeletePolicyVersion
+              - iam:DetachRolePolicy
+              - iam:UpdateRoleDescription
+              - iam:UpdateAssumeRolePolicy
+              - iam:UpdateRole
+              - iam:PutRolePolicy
+              - iam:PutRolePermissionsBoundary
+              - iam:GetRole
+              - iam:GetRolePolicy
+              - iam:GetServiceLinkedRoleDeletionStatus
+              - iam:GetPolicy
+              - iam:GetPolicyVersion
+              - iam:ListEntitiesForPolicy
+              - iam:ListPolicyVersions
+              - iam:ListRolePolicies
+              - iam:ListAttachedRolePolicies
+              - iam:ListRoleTags
+              - iam:TagRole
+              - iam:UntagRole
+              - iam:AttachRolePolicy
+              - iam:SetDefaultPolicyVersion
+              - iam:PassRole
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/${Service}*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/${Service}*
+          - Sid: AllowAllResources
+            Effect: Allow
+            Action:
+              - iam:ListRoles
+              - logs:CreateLogGroup
+              - logs:DescribeLogGroups
+              - events:PutEvents
+              - iam:GetGroup
+            Resource: "*"
+
+  ServerlessCFTPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: 'ServerlessCFTPolicy'
+      Roles: [{Ref: "ServiceDeployerRole"}]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudformationStack
+            Effect: Allow
+            Action:
+              - cloudformation:DeleteStackInstances
+              - cloudformation:CancelUpdateStack
+              - cloudformation:DetectStackDrift
+              - cloudformation:UpdateStackInstances
+              - cloudformation:ListStackSetOperations
+              - cloudformation:ListStackInstances
+              - cloudformation:DescribeStackResource
+              - cloudformation:UpdateStackSet
+              - cloudformation:CreateStackInstances
+              - cloudformation:ContinueUpdateRollback
+              - cloudformation:DetectStackResourceDrift
+              - cloudformation:ListStackSetOperationResults
+              - cloudformation:DescribeStackEvents
+              - cloudformation:DescribeStackSetOperation
+              - cloudformation:UpdateStack
+              - cloudformation:StopStackSetOperation
+              - cloudformation:CreateStackSet
+              - cloudformation:ListStackResources
+              - cloudformation:SetStackPolicy
+              - cloudformation:DescribeStackInstance
+              - cloudformation:DescribeStackResources
+              - cloudformation:SignalResource
+              - cloudformation:DeleteStackSet
+              - cloudformation:DescribeStacks
+              - cloudformation:DescribeStackResourceDrifts
+              - cloudformation:GetStackPolicy
+              - cloudformation:DescribeStackSet
+              - cloudformation:ListStackSets
+              - cloudformation:CreateStack
+              - cloudformation:GetTemplate
+              - cloudformation:DeleteStack
+              - cloudformation:ListChangeSets
+              - cloudformation:CreateChangeSet
+              - cloudformation:DeleteChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:ValidateTemplate
+            Resource: !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${Service}*/*
+          - Sid: AllowResources
+            Effect: Allow
+            Action:
+              - cloudformation:CreateUploadBucket
+              - cloudformation:DescribeStackDriftDetectionStatus
+              - cloudformation:ListExports
+              - cloudformation:ListStacks
+              - cloudformation:ListImports
+              - cloudformation:DescribeAccountLimits
+              - cloudformation:GetTemplateSummary
+              - cloudformation:ValidateTemplate
+            Resource: "*"
+
+  OktaPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: 'OktaPolicy'
+      Roles: [{Ref: "ServiceDeployerRole"}]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CreateIAMUSer
+            Effect: Allow
+            Action:
+              - iam:CreateUser
+              - iam:DeleteUserPolicy
+              - iam:GetUser
+              - iam:GetUserPolicy
+              - iam:ListAccessKeys
+              - iam:PutUserPolicy
+            Resource: arn:aws:iam::*:user/okta-master
+
+Parameters:
+  Service:
+    Description: Name of the service you are deploying, name will be used to reference in IAM role and policy
+    Type: String
+    Default: Okta
+  AccountID:
+    Description: AWS ID number of pipeline 
+    Type: String
+
+Outputs:
+  ServiceDeployerRoleArn:
+    Description: The arn value of deploy role used by the serverless framework
+    Value: !GetAtt ServiceDeployerRole.Arn
+    Export:
+      Name: !Sub ${Service}DeployerRoleArn

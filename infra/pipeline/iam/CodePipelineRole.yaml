@@ -1,0 +1,363 @@
+Resources:
+# Codepipeline and CodeBuild Role are independent of each other and don't need to reference each other, but they do need to reference a deployment bucket
+##Codepipeline
+  CodePipelineRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: SecurityCodePipelineRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+
+  CodePipelinePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: CodePipelinePolicy
+      Roles: [{Ref: "CodePipelineRole"}]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - iam:PassRole
+            Resource: "*"
+            Effect: Allow
+            Condition:
+              StringEqualsIfExists:
+                iam:PassedToService:
+                  - cloudformation.amazonaws.com
+                  - elasticbeanstalk.amazonaws.com
+                  - ec2.amazonaws.com
+                  - ecs-tasks.amazonaws.com
+          - Action:
+              - codecommit:CancelUploadArchive
+              - codecommit:GetBranch
+              - codecommit:GetCommit
+              - codecommit:GetUploadArchiveStatus
+              - codecommit:UploadArchive
+            Resource: "*"
+            Effect: Allow
+          - Action:
+              - codedeploy:CreateDeployment
+              - codedeploy:GetApplication
+              - codedeploy:GetApplicationRevision
+              - codedeploy:GetDeployment
+              - codedeploy:GetDeploymentConfig
+              - codedeploy:RegisterApplicationRevision
+            Resource: "*"
+            Effect: Allow
+          - Action:
+              - elasticbeanstalk:*
+              - ec2:*
+              - elasticloadbalancing:*
+              - autoscaling:*
+              - cloudwatch:*
+              - s3:*
+              - sns:*
+              - cloudformation:*
+              - rds:*
+              - sqs:*
+              - ecs:*
+            Resource: "*"
+            Effect: Allow
+          - Action:
+              - lambda:InvokeFunction
+              - lambda:ListFunctions
+            Resource: "*"
+            Effect: Allow
+          - Action:
+              - opsworks:CreateDeployment
+              - opsworks:DescribeApps
+              - opsworks:DescribeCommands
+              - opsworks:DescribeDeployments
+              - opsworks:DescribeInstances
+              - opsworks:DescribeStacks
+              - opsworks:UpdateApp
+              - opsworks:UpdateStack
+            Resource: "*"
+            Effect: Allow
+          - Action:
+              - cloudformation:CreateStack
+              - cloudformation:DeleteStack
+              - cloudformation:DescribeStacks
+              - cloudformation:UpdateStack
+              - cloudformation:CreateChangeSet
+              - cloudformation:DeleteChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:SetStackPolicy
+              - cloudformation:ValidateTemplate
+            Resource: "*"
+            Effect: Allow
+          - Action:
+              - codebuild:BatchGetBuilds
+              - codebuild:StartBuild
+            Resource: "*"
+            Effect: Allow
+          - Effect: Allow
+            Action:
+              - devicefarm:ListProjects
+              - devicefarm:ListDevicePools
+              - devicefarm:GetRun
+              - devicefarm:GetUpload
+              - devicefarm:CreateUpload
+              - devicefarm:ScheduleRun
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - servicecatalog:ListProvisioningArtifacts
+              - servicecatalog:CreateProvisioningArtifact
+              - servicecatalog:DescribeProvisioningArtifact
+              - servicecatalog:DeleteProvisioningArtifact
+              - servicecatalog:UpdateProduct
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - cloudformation:ValidateTemplate
+            Resource: "*"
+          - Effect: Allow
+            Action:
+              - ecr:DescribeImages
+            Resource: "*"
+##CodeBuild
+  CodeBuildRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: SecurityCodeBuildRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [codebuild.amazonaws.com]
+            Action: sts:AssumeRole
+
+  CodebuildBasePolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: 'CodebuildBasePolicy'
+      Roles: [{Ref: "CodeBuildRole"}]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowS3Object
+            Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:GetObjectVersion
+              - s3:GetBucketAcl
+              - s3:GetBucketLocation
+            Resource:
+              !Join
+                - ''
+                - - !ImportValue SecurityDeploymentBucketArn
+                  - '*'
+          - Sid: AllowCreatingLogs
+            Effect: Allow
+            Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+            Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*:*
+          - Sid: AccountAlias
+            Effect: Allow
+            Action:
+              - iam:ListAccountAliases
+            Resource: '*' 
+
+  ServiceRoleAssumer:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Sub ${Service}AssumerPolicy
+      Roles: [{Ref: "CodeBuildRole"}]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowSTS
+            Effect: Allow
+            Action: sts:AssumeRole
+            Resource: !Sub arn:aws:iam::*:role/${Service}DeployerRole
+
+  ServiceDeployerRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub ${Service}DeployerRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !GetAtt CodeBuildRole.Arn
+            Action: sts:AssumeRole
+
+  ServerlessDeployPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: 'ServerlessDeployPolicy'
+      Roles: [{Ref: "ServiceDeployerRole"}]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PassRole
+            Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource: !GetAtt CodeBuildRole.Arn
+          - Sid: IAM
+            Effect: Allow
+            Action:
+              - iam:CreateRole
+              - iam:CreatePolicy
+              - iam:DeleteRole
+              - iam:DeletePolicy
+              - iam:DeleteRolePermissionsBoundary
+              - iam:DeleteRolePolicy
+              - iam:DeletePolicyVersion
+              - iam:DetachRolePolicy
+              - iam:UpdateRoleDescription
+              - iam:UpdateAssumeRolePolicy
+              - iam:UpdateRole
+              - iam:PutRolePolicy
+              - iam:PutRolePermissionsBoundary
+              - iam:GetRole
+              - iam:GetRolePolicy
+              - iam:GetServiceLinkedRoleDeletionStatus
+              - iam:GetPolicy
+              - iam:GetPolicyVersion
+              - iam:ListEntitiesForPolicy
+              - iam:ListPolicyVersions
+              - iam:ListRolePolicies
+              - iam:ListAttachedRolePolicies
+              - iam:ListRoleTags
+              - iam:TagRole
+              - iam:UntagRole
+              - iam:AttachRolePolicy
+              - iam:SetDefaultPolicyVersion
+              - iam:PassRole
+            Resource:
+              - !Sub arn:aws:iam::${AWS::AccountId}:policy/${Service}*
+              - !Sub arn:aws:iam::${AWS::AccountId}:role/${Service}*
+
+  ServerlessCFTPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: 'ServerlessCFTPolicy'
+      Roles: [{Ref: "ServiceDeployerRole"}]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudformationStack
+            Effect: Allow
+            Action:
+              - cloudformation:DeleteStackInstances
+              - cloudformation:CancelUpdateStack
+              - cloudformation:DetectStackDrift
+              - cloudformation:UpdateStackInstances
+              - cloudformation:ListStackSetOperations
+              - cloudformation:ListStackInstances
+              - cloudformation:DescribeStackResource
+              - cloudformation:UpdateStackSet
+              - cloudformation:CreateStackInstances
+              - cloudformation:ContinueUpdateRollback
+              - cloudformation:DetectStackResourceDrift
+              - cloudformation:ListStackSetOperationResults
+              - cloudformation:DescribeStackEvents
+              - cloudformation:DescribeStackSetOperation
+              - cloudformation:UpdateStack
+              - cloudformation:StopStackSetOperation
+              - cloudformation:CreateStackSet
+              - cloudformation:ListStackResources
+              - cloudformation:SetStackPolicy
+              - cloudformation:DescribeStackInstance
+              - cloudformation:DescribeStackResources
+              - cloudformation:SignalResource
+              - cloudformation:DeleteStackSet
+              - cloudformation:DescribeStacks
+              - cloudformation:DescribeStackResourceDrifts
+              - cloudformation:GetStackPolicy
+              - cloudformation:DescribeStackSet
+              - cloudformation:ListStackSets
+              - cloudformation:CreateStack
+              - cloudformation:GetTemplate
+              - cloudformation:DeleteStack
+              - cloudformation:ListChangeSets
+              - cloudformation:CreateChangeSet
+              - cloudformation:DeleteChangeSet
+              - cloudformation:DescribeChangeSet
+              - cloudformation:ExecuteChangeSet
+              - cloudformation:ValidateTemplate
+            Resource: !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${Service}*/*
+          - Sid: AllowResources
+            Effect: Allow
+            Action:
+              - cloudformation:CreateUploadBucket
+              - cloudformation:DescribeStackDriftDetectionStatus
+              - cloudformation:ListExports
+              - cloudformation:ListStacks
+              - cloudformation:ListImports
+              - cloudformation:DescribeAccountLimits
+              - cloudformation:GetTemplateSummary
+              - cloudformation:ValidateTemplate
+            Resource: "*"
+
+  OktaPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: 'OktaPolicy'
+      Roles: [{Ref: "ServiceDeployerRole"}]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CreateIAMUSer
+            Effect: Allow
+            Action:
+              - iam:CreateUser
+              - iam:DeleteUserPolicy
+              - iam:GetUser
+              - iam:GetUserPolicy
+              - iam:ListAccessKeys
+              - iam:PutUserPolicy
+            Resource: arn:aws:iam::*:user/okta-master
+          - Sid: CreateIdP
+            Effect: Allow
+            Action:
+              - lambda:CreateFunction
+              - lambda:DeleteFunction
+              - lambda:InvokeFunction
+              - lambda:GetFunction
+              - lambda:GetFunctionConfiguration
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:OktaProvider*
+
+Parameters:
+  Service:
+    Description: Name of the service you are deploying, name will be used to reference in IAM role and policy
+    Type: String
+    Default: Okta
+
+Outputs:
+  CodePipelineRoleArn:
+    Description: The arn value of deploy role for a pipeline
+    Value: !GetAtt CodePipelineRole.Arn
+    Export:
+      Name: SecurityCodePipelineRoleArn
+
+  CodeBuildRoleName:
+    Description: The name of the role
+    Value: !Ref CodeBuildRole
+    Export:
+      Name: SecurityCodeBuildRoleName
+  CodeBuildRoleArn:
+    Description: The arn value of the role for the codebuild
+    Value: !GetAtt CodeBuildRole.Arn
+    Export:
+      Name: SecurityCodeBuildRoleArn
+
+  ServiceDeployerRoleArn:
+    Description: The arn value of deploy role used by the serverless framework
+    Value: !GetAtt ServiceDeployerRole.Arn
+    Export:
+      Name: !Sub ${Service}DeployerRoleArn
