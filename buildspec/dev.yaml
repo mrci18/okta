@@ -4,7 +4,7 @@ phases:
   pre_build:
     commands:
       - pwd
-      - export OktaMetadataURL=$(aws ssm get-parameters --name OktaMetdataURL --with-decryption --query "Parameters[].Value" --output text)
+      - export OktaMetadataURL=$(aws ssm get-parameters --name OktaMetadataURL --with-decryption --query "Parameters[].Value" --output text)
 
   build:
     commands:
