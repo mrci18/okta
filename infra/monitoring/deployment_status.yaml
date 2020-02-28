@@ -115,7 +115,6 @@ Resources:
               - kms:Decrypt
               - ssm:GetParameters
             Resource:
-              # - arn:aws:kms:us-west-2:*:key/9c4c52c5-7901-404e-90b2-5e4c6adbb8db
               - Fn::ImportValue: SecurityDeploymentKMSKeyArn
               - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/SECURITY_DEPLOYMENT*
 

@@ -169,6 +169,24 @@ Resources:
               - iam:ListAccountAliases
             Resource: '*' 
 
+  CodebuildSSMPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: 'CodebuildSSMPolicy'
+      Roles: [{Ref: "CodeBuildRole"}]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowDecryptSSM
+            Effect: Allow
+            Action:
+              - ssm:GetParameters
+              - kms:Decrypt
+            Resource: 
+              - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${Service}*
+              - Fn::ImportValue: SecurityDeploymentKMSKeyArn
+
+# Deployer Role
   ServiceRoleAssumer:
     Type: 'AWS::IAM::Policy'
     Properties:
@@ -182,23 +200,11 @@ Resources:
             Action: sts:AssumeRole
             Resource: !Sub arn:aws:iam::*:role/${Service}DeployerRole
 
-  ServiceDeployerRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      RoleName: !Sub ${Service}DeployerRole
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              AWS: !GetAtt CodeBuildRole.Arn
-            Action: sts:AssumeRole
-
   ServerlessDeployPolicy:
     Type: 'AWS::IAM::Policy'
     Properties:
       PolicyName: 'ServerlessDeployPolicy'
-      Roles: [{Ref: "ServiceDeployerRole"}]
+      Roles: [{Ref: "CodeBuildRole"}]
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -246,7 +252,7 @@ Resources:
     Type: 'AWS::IAM::Policy'
     Properties:
       PolicyName: 'ServerlessCFTPolicy'
-      Roles: [{Ref: "ServiceDeployerRole"}]
+      Roles: [{Ref: "CodeBuildRole"}]
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -308,7 +314,7 @@ Resources:
     Type: 'AWS::IAM::Policy'
     Properties:
       PolicyName: 'OktaPolicy'
-      Roles: [{Ref: "ServiceDeployerRole"}]
+      Roles: [{Ref: "CodeBuildRole"}]
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -355,9 +361,3 @@ Outputs:
     Value: !GetAtt CodeBuildRole.Arn
     Export:
       Name: SecurityCodeBuildRoleArn
-
-  ServiceDeployerRoleArn:
-    Description: The arn value of deploy role used by the serverless framework
-    Value: !GetAtt ServiceDeployerRole.Arn
-    Export:
-      Name: !Sub ${Service}DeployerRoleArn

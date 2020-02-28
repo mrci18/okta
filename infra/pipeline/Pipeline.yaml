@@ -1,37 +1,7 @@
 Resources:
-#References Okta Deployer Roles, provision those before creating pipeline
-  DefaultBuild:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Description: !Sub First build for ${Service}
-      ServiceRole: !ImportValue SecurityCodeBuildRoleArn
-      Artifacts:
-        Type: CODEPIPELINE
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/standard:2.0
-        EnvironmentVariables:
-          - Name: SERVICE
-            Value: !Ref Service
-          - Name: STAGE
-            Value: !Ref Stage
-          - Name: DEPLOYERARN
-            Value: 
-              Fn::ImportValue: 
-                !Sub ${Service}DeployerRoleArn
-
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: !Ref BuildSpecPath
-      TimeoutInMinutes: 10
-      QueuedTimeoutInMinutes: 10
-      Tags:
-        - Key: Service
-          Value: !Ref Service
-        - Key: Team
-          Value: !Ref Team
-
+# References Okta Deployer Roles by respective build environment as variables
+  # Create SSM parameter store that maps to the env variable
+# Pipeline
   DefaultCodepipelineWebhook:
     Type: 'AWS::CodePipeline::Webhook'
     Properties:
@@ -70,7 +40,7 @@ Resources:
               OutputArtifacts:
                 - Name: sArtifact
               RunOrder: 1
-        - Name: DefaultBuild
+        - Name: Build
           Actions:
             - Name: DefaultBuild
               ActionTypeId:
@@ -85,11 +55,170 @@ Resources:
               OutputArtifacts:
                 - Name: DefaultBuild
               RunOrder: 1
+            - Name: DevBuild
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref DevBuild
+              InputArtifacts:
+                - Name: sArtifact
+              OutputArtifacts:
+                - Name: DevBuild
+              RunOrder: 1
+            # Copy from here to make new build for new account
+            - Name: MatsonlabsBuild
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref MatsonlabsBuild
+              InputArtifacts:
+                - Name: sArtifact
+              OutputArtifacts:
+                - Name: MatsonlabsBuild
+              RunOrder: 1
+            # End copy. Paste below and edit
+        - Name: ApproveToProd
+          Actions:
+            - Name: ApproveToProd
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Version: 1
+                Provider: Manual
+        - Name: ProdBuilds
+          Actions:
+            - Name: ProdBuild
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref ProdBuild
+              InputArtifacts:
+                - Name: sArtifact
+              OutputArtifacts:
+                - Name: ProdBuild
+              RunOrder: 1
       ArtifactStore:
         Type: S3
         Location: !ImportValue SecurityDeploymentBucketName
-    # DependsOn:
-    #   - DefaultBuild
+
+#Builds
+  DefaultBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Description: Creates user for Okta and set Idp
+      ServiceRole: !ImportValue SecurityCodeBuildRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:2.0
+        EnvironmentVariables:
+          - Name: SERVICE
+            Value: !Ref Service
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec/master.yaml
+      TimeoutInMinutes: 10
+      QueuedTimeoutInMinutes: 10
+      Tags:
+        - Key: Service
+          Value: !Ref Service
+        - Key: Team
+          Value: !Ref Team
+
+  DevBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Description: Creates Okta roles and set Idp
+      ServiceRole: !ImportValue SecurityCodeBuildRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:2.0
+        EnvironmentVariables:
+          - Name: SERVICE
+            Value: !Ref Service
+          - Name: OktaDevDeployerRole
+            Type: PARAMETER_STORE
+            Value: OktaDevDeployerRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec/dev.yaml
+      TimeoutInMinutes: 10
+      QueuedTimeoutInMinutes: 10
+      Tags:
+        - Key: Service
+          Value: !Ref Service
+        - Key: Team
+          Value: !Ref Team
+
+  MatsonlabsBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Description: Creates Okta roles and set Idp
+      ServiceRole: !ImportValue SecurityCodeBuildRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:2.0
+        EnvironmentVariables:
+          - Name: SERVICE
+            Value: !Ref Service
+          - Name: OktaMatsonlabsDeployerRole
+            Type: PARAMETER_STORE
+            Value: OktaMatsonlabsDeployerRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec/matsonlabs.yaml
+      TimeoutInMinutes: 10
+      QueuedTimeoutInMinutes: 10
+      Tags:
+        - Key: Service
+          Value: !Ref Service
+        - Key: Team
+          Value: !Ref Team
+
+  ProdBuild:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Description: Creates Okta roles and set Idp
+      ServiceRole: !ImportValue SecurityCodeBuildRoleArn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:2.0
+        EnvironmentVariables:
+          - Name: SERVICE
+            Value: !Ref Service
+          - Name: OktaProdDeployerRole
+            Type: PARAMETER_STORE
+            Value: OktaProdDeployerRole
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec/prod.yaml
+      TimeoutInMinutes: 10
+      QueuedTimeoutInMinutes: 10
+      Tags:
+        - Key: Service
+          Value: !Ref Service
+        - Key: Team
+          Value: !Ref Team
 
 Parameters:
   Service:
@@ -97,31 +226,32 @@ Parameters:
     Type: String
     Default: Okta
 
-  Stage:
-    Description: Enter stage environment you are creating resource for. Default is matsonlabs
-    Type: String
-
   Team:
     Description: The team that owns this service
     Type: String
     AllowedPattern: ^[a-zA-Z0-9]*$
+    Default: Security
 
   BranchName:
     Description: GitHub branch name
     Type: String
     Default: master
+
   RepositoryName:
     Description: GitHub repository name
     Type: String
     Default: sec_mfasupervisor
+
   GitHubOwner:
     Description: Matson Org Account
     Type: String
     Default: MatsonInc
+
   GitHubSecret:
     Description: Password of the user who creates the OAuth token
     Type: String
     NoEcho: true
+
   GitHubOAuthToken:
     Description: |+
       Create an OAuth token following this link ***https://help.github.com/en/articles/creating-a-personal-access-token-for-the-command-line***
@@ -131,12 +261,6 @@ Parameters:
       2. After generating OAuth token, `Enable SSO` and `Authorize` to access MatsonInc on that specific token
     Type: String
     NoEcho: true
-
-#Need to add based on env 
-  BuildSpecPath:
-    Description: By default, CodeBuild looks for a file named buildspec.yml in the source code root directory. If your buildspec file uses a different name or location, enter its path from the source root here (for example, buildspec-two.yml or configuration/buildspec.yml).
-    Type: String
-    Default: buildspec/master.yaml
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -157,8 +281,6 @@ Metadata:
           - GitHubOAuthToken
       - Label:
           default: Build
-        Parameters:
-          - BuildSpecPath
 
     ParameterLabels:
       Service:
@@ -175,24 +297,3 @@ Metadata:
         default: GitHub Secret
       GitHubOAuthToken:
         default: GitHub OAuth Token
-      BuildSpecPath:
-        default: Codebuild
-
-# Outputs:
-#   CodeBuildRoleArn:
-#     Description: The arn value of the role for the codebuild
-#     Value: !GetAtt CodeBuildRole.Arn
-#     Export:
-#       Name: !Sub ${Service}CodeBuildRoleArn
-
-#   ServiceDeployerRoleArn:
-#     Description: The arn value of deploy role used by the serverless framework
-#     Value: !GetAtt ServiceDeployerRole.Arn
-#     Export:
-#       Name: !Sub ${Service}DeployerRoleArn
-
-#   CodePipelineRoleArn:
-#     Description: The arn value of deploy role for a pipeline
-#     Value: !GetAtt CodePipelineRole.Arn
-#     Export:
-#       Name: !Sub ${Service}pipelineRoleArn

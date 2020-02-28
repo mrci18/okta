@@ -1,4 +1,6 @@
 Resources:
+  OktaDeployerRole:
+    Type: 'AWS::CloudFormation::Stack'
 #References security Codebuild role ARN and security deployment bucket
   ServiceDeployerRole:
     Type: 'AWS::IAM::Role'
@@ -140,16 +142,15 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-          - Sid: CreateIAMUSer
+          - Sid: CreateIdP
             Effect: Allow
             Action:
-              - iam:CreateUser
-              - iam:DeleteUserPolicy
-              - iam:GetUser
-              - iam:GetUserPolicy
-              - iam:ListAccessKeys
-              - iam:PutUserPolicy
-            Resource: arn:aws:iam::*:user/okta-master
+              - lambda:CreateFunction
+              - lambda:DeleteFunction
+              - lambda:InvokeFunction
+              - lambda:GetFunction
+              - lambda:GetFunctionConfiguration
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:OktaProvider*
 
 Parameters:
   Service:
