@@ -155,8 +155,6 @@ Resources:
           - Name: OktaDevDeployerRole
             Type: PARAMETER_STORE
             Value: OktaDevDeployerRole
-          - Name: OKTAUSER
-            Value: !Ref OktaUsername
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec/dev.yaml

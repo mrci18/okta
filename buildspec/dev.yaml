@@ -20,7 +20,7 @@ phases:
       - export AWS_DEFAULT_REGION=us-west-2
       - wget -O metadata.xml ${OktaMetadataURL} 
       - cat metadata.xml | tr -d '\n' | sed -e 's/"/\"/g' > out.xml
-      - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./okta-base.yaml --stack-name OktaBase --parameter-overrides Service=${SERVICE} MetadataDocument="$(cat out.xml)" SamlProviderName=${SAMLProviderName} --capabilities CAPABILITY_NAMED_IAM
+      - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./okta-base.yaml --stack-name OktaBase --parameter-overrides Service=${SERVICE} MetadataDocument="$(cat out.xml)" SamlProviderName=${SERVICE} --capabilities CAPABILITY_NAMED_IAM
       - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./Okta-Idp-cross-account-role.yaml --stack-name OktaIdPCrossAccountRole --parameter-overrides OktaMasterAccountID=${AccountID} --capabilities CAPABILITY_NAMED_IAM
 
   post_build:
