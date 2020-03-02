@@ -163,10 +163,11 @@ Resources:
               - logs:CreateLogStream
               - logs:PutLogEvents
             Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*:*:*
-          - Sid: AccountAlias
+          - Sid: AccountInfo
             Effect: Allow
             Action:
               - iam:ListAccountAliases
+              - sts:GetCallerIdentity
             Resource: '*' 
 
   CodebuildSSMPolicy:
@@ -327,7 +328,7 @@ Resources:
               - iam:GetUserPolicy
               - iam:ListAccessKeys
               - iam:PutUserPolicy
-            Resource: arn:aws:iam::*:user/okta-master
+            Resource: !Sub arn:aws:iam::*:user/${OktaUsername}
           - Sid: CreateIdP
             Effect: Allow
             Action:
@@ -343,6 +344,12 @@ Parameters:
     Description: Name of the service you are deploying, name will be used to reference in IAM role and policy
     Type: String
     Default: Okta
+
+  OktaUsername:
+    Description: IAM user used by Okta
+    Type: String
+    Default: okta-master
+
 
 Outputs:
   CodePipelineRoleArn:

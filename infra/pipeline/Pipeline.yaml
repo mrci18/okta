@@ -68,44 +68,44 @@ Resources:
               OutputArtifacts:
                 - Name: DevBuild
               RunOrder: 1
-            # Copy from here to make new build for new account
-            - Name: MatsonlabsBuild
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Version: 1
-                Provider: CodeBuild
-              Configuration:
-                ProjectName: !Ref MatsonlabsBuild
-              InputArtifacts:
-                - Name: sArtifact
-              OutputArtifacts:
-                - Name: MatsonlabsBuild
-              RunOrder: 1
-            # End copy. Paste below and edit
-        - Name: ApproveToProd
-          Actions:
-            - Name: ApproveToProd
-              ActionTypeId:
-                Category: Approval
-                Owner: AWS
-                Version: 1
-                Provider: Manual
-        - Name: ProdBuilds
-          Actions:
-            - Name: ProdBuild
-              ActionTypeId:
-                Category: Build
-                Owner: AWS
-                Version: 1
-                Provider: CodeBuild
-              Configuration:
-                ProjectName: !Ref ProdBuild
-              InputArtifacts:
-                - Name: sArtifact
-              OutputArtifacts:
-                - Name: ProdBuild
-              RunOrder: 1
+        #     # Copy from here to make new build for new account
+        #     - Name: MatsonlabsBuild
+        #       ActionTypeId:
+        #         Category: Build
+        #         Owner: AWS
+        #         Version: 1
+        #         Provider: CodeBuild
+        #       Configuration:
+        #         ProjectName: !Ref MatsonlabsBuild
+        #       InputArtifacts:
+        #         - Name: sArtifact
+        #       OutputArtifacts:
+        #         - Name: MatsonlabsBuild
+        #       RunOrder: 1
+        #     # End copy. Paste below and edit
+        # - Name: ApproveToProd
+        #   Actions:
+        #     - Name: ApproveToProd
+        #       ActionTypeId:
+        #         Category: Approval
+        #         Owner: AWS
+        #         Version: 1
+        #         Provider: Manual
+        # - Name: ProdBuilds
+        #   Actions:
+        #     - Name: ProdBuild
+        #       ActionTypeId:
+        #         Category: Build
+        #         Owner: AWS
+        #         Version: 1
+        #         Provider: CodeBuild
+        #       Configuration:
+        #         ProjectName: !Ref ProdBuild
+        #       InputArtifacts:
+        #         - Name: sArtifact
+        #       OutputArtifacts:
+        #         - Name: ProdBuild
+        #       RunOrder: 1
       ArtifactStore:
         Type: S3
         Location: !ImportValue SecurityDeploymentBucketName
@@ -125,6 +125,8 @@ Resources:
         EnvironmentVariables:
           - Name: SERVICE
             Value: !Ref Service
+          - Name: OKTAUSER
+            Value: !Ref OktaUsername
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec/master.yaml
@@ -153,6 +155,8 @@ Resources:
           - Name: OktaDevDeployerRole
             Type: PARAMETER_STORE
             Value: OktaDevDeployerRole
+          - Name: OKTAUSER
+            Value: !Ref OktaUsername
       Source:
         Type: CODEPIPELINE
         BuildSpec: buildspec/dev.yaml
@@ -164,61 +168,61 @@ Resources:
         - Key: Team
           Value: !Ref Team
 
-  MatsonlabsBuild:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Description: Creates Okta roles and set Idp
-      ServiceRole: !ImportValue SecurityCodeBuildRoleArn
-      Artifacts:
-        Type: CODEPIPELINE
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/standard:2.0
-        EnvironmentVariables:
-          - Name: SERVICE
-            Value: !Ref Service
-          - Name: OktaMatsonlabsDeployerRole
-            Type: PARAMETER_STORE
-            Value: OktaMatsonlabsDeployerRole
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: buildspec/matsonlabs.yaml
-      TimeoutInMinutes: 10
-      QueuedTimeoutInMinutes: 10
-      Tags:
-        - Key: Service
-          Value: !Ref Service
-        - Key: Team
-          Value: !Ref Team
+  # MatsonlabsBuild:
+  #   Type: AWS::CodeBuild::Project
+  #   Properties:
+  #     Description: Creates Okta roles and set Idp
+  #     ServiceRole: !ImportValue SecurityCodeBuildRoleArn
+  #     Artifacts:
+  #       Type: CODEPIPELINE
+  #     Environment:
+  #       Type: LINUX_CONTAINER
+  #       ComputeType: BUILD_GENERAL1_SMALL
+  #       Image: aws/codebuild/standard:2.0
+  #       EnvironmentVariables:
+  #         - Name: SERVICE
+  #           Value: !Ref Service
+  #         - Name: OktaMatsonlabsDeployerRole
+  #           Type: PARAMETER_STORE
+  #           Value: OktaMatsonlabsDeployerRole
+  #     Source:
+  #       Type: CODEPIPELINE
+  #       BuildSpec: buildspec/matsonlabs.yaml
+  #     TimeoutInMinutes: 10
+  #     QueuedTimeoutInMinutes: 10
+  #     Tags:
+  #       - Key: Service
+  #         Value: !Ref Service
+  #       - Key: Team
+  #         Value: !Ref Team
 
-  ProdBuild:
-    Type: AWS::CodeBuild::Project
-    Properties:
-      Description: Creates Okta roles and set Idp
-      ServiceRole: !ImportValue SecurityCodeBuildRoleArn
-      Artifacts:
-        Type: CODEPIPELINE
-      Environment:
-        Type: LINUX_CONTAINER
-        ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/standard:2.0
-        EnvironmentVariables:
-          - Name: SERVICE
-            Value: !Ref Service
-          - Name: OktaProdDeployerRole
-            Type: PARAMETER_STORE
-            Value: OktaProdDeployerRole
-      Source:
-        Type: CODEPIPELINE
-        BuildSpec: buildspec/prod.yaml
-      TimeoutInMinutes: 10
-      QueuedTimeoutInMinutes: 10
-      Tags:
-        - Key: Service
-          Value: !Ref Service
-        - Key: Team
-          Value: !Ref Team
+  # ProdBuild:
+  #   Type: AWS::CodeBuild::Project
+  #   Properties:
+  #     Description: Creates Okta roles and set Idp
+  #     ServiceRole: !ImportValue SecurityCodeBuildRoleArn
+  #     Artifacts:
+  #       Type: CODEPIPELINE
+  #     Environment:
+  #       Type: LINUX_CONTAINER
+  #       ComputeType: BUILD_GENERAL1_SMALL
+  #       Image: aws/codebuild/standard:2.0
+  #       EnvironmentVariables:
+  #         - Name: SERVICE
+  #           Value: !Ref Service
+  #         - Name: OktaProdDeployerRole
+  #           Type: PARAMETER_STORE
+  #           Value: OktaProdDeployerRole
+  #     Source:
+  #       Type: CODEPIPELINE
+  #       BuildSpec: buildspec/prod.yaml
+  #     TimeoutInMinutes: 10
+  #     QueuedTimeoutInMinutes: 10
+  #     Tags:
+  #       - Key: Service
+  #         Value: !Ref Service
+  #       - Key: Team
+  #         Value: !Ref Team
 
 Parameters:
   Service:
@@ -261,6 +265,11 @@ Parameters:
       2. After generating OAuth token, `Enable SSO` and `Authorize` to access MatsonInc on that specific token
     Type: String
     NoEcho: true
+
+  OktaUsername:
+    Description: IAM user used by Okta
+    Type: String
+    Default: okta-master
 
 Metadata:
   AWS::CloudFormation::Interface:

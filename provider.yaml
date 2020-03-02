@@ -1,6 +1,11 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Create a SAML identity provider
-
+Outputs:
+  IdP:
+    Description: Arn of IdP
+    Value: !Ref IdentityProvider
+    Export:
+      Name: IdPARN
 Parameters:
   MetadataDocument:
     Type: String
@@ -8,7 +13,7 @@ Parameters:
   SamlProviderName:
     Type: String
     Description: The name for your SAML provider in IAM
-    Default: MyProvider
+    Default: Okta
 
 Resources:
   IdentityProvider:

@@ -4,14 +4,17 @@ phases:
   pre_build:
     commands:
       - pwd
+      - export SAMLProviderName="okta"
+      - export OKTAUSER="okta-master"
+      - export AccountID=$(aws sts get-caller-identity --query "Account" --output text)
       - export OktaMetadataURL=$(aws ssm get-parameters --name OktaMetadataURL --with-decryption --query "Parameters[].Value" --output text)
 
   build:
     commands:
       - wget -O metadata.xml ${OktaMetadataURL} 
       - cat metadata.xml | tr -d '\n' | sed -e 's/"/\"/g' > out.xml
-      - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./provider.yaml --stack-name OktaProvider --parameter-overrides MetadataDocument="$(cat out.xml)" SamlProviderName=okta --capabilities CAPABILITY_NAMED_IAM
-      - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./okta-user.yaml --stack-name OktaUser --parameter-overrides OktaUsername=okta-master --capabilities CAPABILITY_NAMED_IAM
+      - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./okta-base.yaml --stack-name OktaBase --parameter-overrides Service=${SERVICE} MetadataDocument="$(cat out.xml)" SamlProviderName=${SAMLProviderName} --capabilities CAPABILITY_NAMED_IAM
+      - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./okta-user.yaml --stack-name OktaUser --parameter-overrides OktaUsername=${OKTAUSER} --capabilities CAPABILITY_NAMED_IAM
 
   post_build:
     commands:
