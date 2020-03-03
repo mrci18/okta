@@ -1,54 +1,70 @@
 # Slack
-- Create slack app and webhook for deployment status channel
+This slack webhook allows us to get notifications for our deployments happening 
+- Create slack app
+- Under that slack app, create a new webhook for #security-deployments channel
+
+# Okta
+This Okta URL is needed to know which Okta source to link our Identity Provider on AWS
+
+- Log in to Okta(must be Okta application admin) in classic UI
+- Click through Applications -> Amazon Web Services -> Sign On
+
+- Under  Settings > SIGN ON METHODS > SAML 2.0
+    - Right click `Identity Provider metadata`
+    - Copy link address
+
 
 # deploy.sh
-## This bash script will be the source and should dictate the deploy flow the first time this repo is provisioned on the pipeline account
-- Provisions 
+This bash script is a reference point and prefered way to provision AWS resources for this repo
+- Provisioned
     - [KMS key](#KMS)
-    - [SSM secret parameters](#SSMParameters)
+    - [SSM secret parameters](#ssm-parameters)
     - [s3 bucket](#s3)
-    - [IAM roles and policy](#Pipelinerolesandpolicy)
+    - [IAM roles and policy](#pipeline-roles-and-policy)
     - [codepipeline and codebuild projects](#Pipeline)
+
+- Inputs
+The inputs will have a short description when prompted
+
+- How to run
+bash deploy.sh
 
 # KMS
 - Change arn of key in deployment_status.yaml when finally provisioning KMS key
-The deployment KMS key is deployed before everything because it is needed to encrypt SSM values. At the time of writing, SSM secret params are not supported by Cloudformation
 
 This KMS key will be used to encrypt
-    - Okta Metadata URL
-    - Slack webhook URL which is referenced in the deployment status lambda
+- [Okta Metadata URL](#Okta)
+- [Slack webhook URL](#Slack) 
 
-The key error KMS key should be deployed per account with an SSM secret of a slack webhook URL that has a lambda. With this we will be able to plug slack as an error notification method for our lambdas
+The KMS key is deployed before everything because it is needed to encrypt SSM parameters. At the time of writing, SSM secret params are not supported by Cloudformation
 
 # SSM Parameters
-
+These SSM parameters are the easiest way to encrypt sensitive values reference in Codebuild project
+Referen
+- [Okta Metadata URL](#Okta)
+    - Referenced by each codebuild project because it is needed to set the correct Okta source as the Identity Provider on AWS
+- [Slack webhook URL](#Slack) 
+    - Referenced by monitoring lambda
 # S3
-This s3 bucket will be used by codepipeline to store source artifacts, (source artifacts used by codebuild to create build)
+This s3 bucket will be used by codepipeline to store artifacts, (source artifacts used by codebuild to create build)
 We want to use this as central codepipeline artifact store for security deployments. Each project will be represented as an object based on the codepipeline name.
 
 # Pipeline roles and policy
 Codepipeline role
-    - Basic rights needed to operate codepipeline
+- Basic rights needed to operate codepipeline
 Codebuild role
-    - Permission to create resources with code build
-        - IAM user, roles, policy, SAML
-        - Cloudformation 
-        - Assume deployer roles in other AWS accounts
-Deployer Role
-    - Provisioned in another AWS account
-    - Permission to create resources with code build
-        - IAM roles, policy, SAML
-        - Cloudformation 
+- Permission to create resources with code build
+    - IAM user, roles, policy, SAML
+    - Cloudformation 
+    - Assume deployer roles (ref below)in other AWS accounts
+
+# Roles for non pipeline account
+OktaDeployerRole.yaml must be provisioned after the pipeline has been provisioned because it references the specific codebuild role ARN that is build
+- Provisioned in another AWS account
+- Permission to create resources with code build
+    - IAM roles, policy, SAML
+    - Cloudformation 
 
 # Pipeline
 
-# okta
-IAM CFT templates for Okta 
-
-# Account B
-- CFT to set up IdP
-- DeployerRole
-
-
-# Need to figure out why builds are running twice
 

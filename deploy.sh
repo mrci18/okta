@@ -1,4 +1,35 @@
 #!/bin/bash
+set -e
+
+### Inputs ###
+## CFT variables
+service="Okta"
+okta_username="okta-master"
+message="INFO: You are about to input sensitive data; your input will not be echo'd back to the terminal"
+team="Security"
+
+echo "Reference #KMS in README.md"
+read -p "AWS username to administer the KMS key (e.g. bob@matson.com): " username
+
+echo "Reference #Slack in README.md"
+echo -e "\n\n${message}"
+read -sp "The webhook URL from slack for security deployment channel: " deployment_webhook
+
+echo "Reference #Okta in README.md"
+echo -e "\n${message}"
+read -sp "The URL for Okta XML: " okta_xml_url
+
+## Pipeline
+branch="master"
+gitOwner="mrci18"
+repo="okta"
+
+echo "Reference #Pipeline in README.md"
+echo -e "\n${message}"
+read -sp "GitHub OAuth Token (Reference the doc link above if you need help): " oAuth
+
+echo -e "\n\n${message}"
+read -sp "Github password (i.e The GitHub account password that created the OAuthToken above): " gitPassword
 
 ### Functions ###
 function deploy_kms(){
@@ -33,7 +64,7 @@ function deploy_pipeline_role(){
         --stack-name CodePipelineRoleStack \
         --parameter-overrides \
             Service=${service} \
-            OktaUserName=${oktaUsername}
+            Okta_userName=${okta_username}
         --capabilities CAPABILITY_NAMED_IAM
 }
 
@@ -65,45 +96,17 @@ function deploy_pipeline(){
     echo -e "Wait until script is fully finished executing..."
 }
 
-### Inputs ###
-read -p "AWS username to administer the KMS key (e.g. bob@matson.com): " username
+function main(){
+    deploy_kms SecurityDeploymentKeyStack infra/kms/security_deployment_key.yaml
+    set_secure_ssm SECURITY_DEPLOYMENT_SLACK ${deployment_webhook} SecurityDeploymentKeyStack
+    set_secure_ssm OktaMetadataURL ${okta_xml_url} SecurityDeploymentKeyStack
 
-## Init config
-service="Okta"
-oktaUsername="okta-master"
-message="INFO: You are about to input sensitive data; your input will not be echo'd back to the terminal"
-team="Security"
+    # # #Add Monitor CFT
+    # # #deploy_regular_cft MonitorDeployerRoleStack monitoring/MonitorDeployerRole.yaml
 
-## Slack config
-echo -e "\n${message}"
-read -sp "The webhook URL from slack for errors: " error_webhook
+    deploy_pipeline_bucket
+    deploy_regular_cft ${service}PipelineRoles infra/pipeline/iam/CodePipelineRole.yaml
+    deploy_pipeline
+}
 
-echo -e "\n\n${message}"
-read -sp "The webhook URL from slack for security deployment channel: " deployment_webhook
-
-## Okta inputs
-echo -e "\n${message}"
-read -sp "The URL for Okta XML: " okta_xml_url
-
-## For pipeline config
-branch="master"
-gitOwner="mrci18"
-repo="okta"
-
-echo -e "\n${message}"
-read -sp "GitHub OAuth Token (Reference the doc link above if you need help): " oAuth
-
-echo -e "\n\n${message}"
-read -sp "Github password (i.e The GitHub account password that created the OAuthToken above): " gitPassword
-
-### Main ###
-deploy_kms SecurityDeploymentKeyStack infra/kms/security_deployment_key.yaml
-set_secure_ssm SECURITY_DEPLOYMENT_SLACK ${deployment_webhook} SecurityDeploymentKeyStack
-set_secure_ssm OktaMetadataURL ${okta_xml_url} SecurityDeploymentKeyStack
-
-# # #Add Monitor CFT
-# # #deploy_regular_cft MonitorDeployerRoleStack monitoring/MonitorDeployerRole.yaml
-
-deploy_pipeline_bucket
-deploy_regular_cft ${service}PipelineRoles infra/pipeline/iam/CodePipelineRole.yaml
-deploy_pipeline
+main
