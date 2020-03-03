@@ -1,8 +1,9 @@
 # Slack
 - Create slack app and webhook for deployment status channel
 
-# dpeloy.sh
+# deploy.sh
 This bash script will be the source and should dictate the deploy flow the first time this repo is provisioned on the pipeline account
+    - # Provisions [create an anchor](#s3)
 
 # KMS
 - Change arn of key in deployment_status.yaml when finally provisioning KMS key
