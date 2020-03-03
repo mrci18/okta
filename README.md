@@ -68,9 +68,9 @@ OktaDeployerRole.yaml must be provisioned after the pipeline has been provisione
     - Cloudformation 
 
 # Pipeline
-The pipeline stage has 3 levels.
+The pipeline stage has 4 stages.
 - Source
-This pipeline is hooked to the master branch of an okta repo
+    - This pipeline is hooked to the master branch of an okta repo
 
 - Build
     - This step has all non production AWS accounts
