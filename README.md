@@ -27,7 +27,9 @@ This bash script is a reference point and prefered way to provision AWS resource
 The inputs will have a short description when prompted
 
 - How to run
+```sh
 bash deploy.sh
+```
 
 # KMS
 - Change arn of key in deployment_status.yaml when finally provisioning KMS key
@@ -66,5 +68,27 @@ OktaDeployerRole.yaml must be provisioned after the pipeline has been provisione
     - Cloudformation 
 
 # Pipeline
+The pipeline stage has 3 levels.
+- Source
+This pipeline is hooked to the master branch of an okta repo
+
+- Build
+    - This step has all non production AWS accounts
+    - Each account will have a reference to the okta-base.yaml
+        - Sets Okta as the IdP in AWS account
+        - Provisions 6 base IAM roles and policies
+    - The pipeline account will reference okta-user.yaml
+        - Creates IAM user
+            - Needed to provision access/secret key for Okta 
+    - Non pipeline accounts will reference Okta-Idp-cross-account-role.yaml
+        - Allows okta to look at what roles can be assumed by Okta
+    - Create additional IAM roles per account in a separate CFT if needed
+- Approve
+    - Manual approval need to get to production builds
+- Production Builds
+    - Similar build to non pipeline accounts are applied here minus custom CFTs 
+        - okta-base.yaml
+        - Okta-Idp-cross-account-role.yaml
+
 
 
