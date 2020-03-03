@@ -3,7 +3,7 @@
 
 # deploy.sh
 This bash script will be the source and should dictate the deploy flow the first time this repo is provisioned on the pipeline account
-    - Provisions [s3](#s3)
+- Provisions [s3](#s3)
 
 # KMS
 - Change arn of key in deployment_status.yaml when finally provisioning KMS key
