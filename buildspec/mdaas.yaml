@@ -4,12 +4,13 @@ phases:
   pre_build:
     commands:
       - pwd
+      - export AccountID=$(aws sts get-caller-identity --query "Account" --output text)
       - export OktaMetadataURL=$(aws ssm get-parameters --name OktaMetadataURL --with-decryption --query "Parameters[].Value" --output text)
 
   build:
     commands:
       - ls 
-      - role=$(aws sts assume-role --role-arn ${OktaMdaassDeployerRole} --role-session-name okta-deployer-session --duration-seconds 900)
+      - role=$(aws sts assume-role --role-arn ${OktaMdaasDeployerRole} --role-session-name okta-deployer-session --duration-seconds 900)
       - KEY=$(echo $role |awk '{print $5}' |  tr -d '"' | tr -d ',' | tr -d '{' | tr -d '}')
       - SECRET=$(echo $role |awk '{print $7}' |  tr -d '"' | tr -d ',' | tr -d '{' | tr -d '}')
       - TOKEN=$(echo $role |awk '{print $9}' |  tr -d '"' | tr -d ',' | tr -d '{' | tr -d '}')
@@ -19,8 +20,8 @@ phases:
       - export AWS_DEFAULT_REGION=us-west-2
       - wget -O metadata.xml ${OktaMetadataURL} 
       - cat metadata.xml | tr -d '\n' | sed -e 's/"/\"/g' > out.xml
-      - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./provider.yaml --stack-name OktaProvider --parameter-overrides MetadataDocument="$(cat out.xml)" SamlProviderName=okta --capabilities CAPABILITY_NAMED_IAM
-      - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./okta-prod-roles.yaml --stack-name OktaRoles --parameter-overrides SAMLARN="arn:aws:iam::234350007166:saml-provider/okta" --capabilities CAPABILITY_NAMED_IAM
+      - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./okta-base.yaml --stack-name OktaBase --parameter-overrides Service=${SERVICE} MetadataDocument="$(cat out.xml)" SamlProviderName=${SERVICE} --capabilities CAPABILITY_NAMED_IAM
+      - aws cloudformation deploy --no-fail-on-empty-changeset --template-file ./Okta-Idp-cross-account-role.yaml --stack-name OktaIdPCrossAccountRole --parameter-overrides OktaMasterAccountID=${AccountID} --capabilities CAPABILITY_NAMED_IAM
 
   post_build:
     commands:

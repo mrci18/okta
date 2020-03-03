@@ -314,7 +314,7 @@ Resources:
   OktaPolicy:
     Type: 'AWS::IAM::Policy'
     Properties:
-      PolicyName: 'OktaPolicy'
+      PolicyName: !Sub '${Service}Policy'
       Roles: [{Ref: "CodeBuildRole"}]
       PolicyDocument:
         Version: '2012-10-17'
@@ -337,7 +337,7 @@ Resources:
               - lambda:InvokeFunction
               - lambda:GetFunction
               - lambda:GetFunctionConfiguration
-            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:OktaProvider*
+            Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${Service}*
 
 Parameters:
   Service:

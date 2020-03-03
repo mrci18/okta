@@ -2,8 +2,13 @@
 - Create slack app and webhook for deployment status channel
 
 # deploy.sh
-This bash script will be the source and should dictate the deploy flow the first time this repo is provisioned on the pipeline account
-- Provisions [s3](#s3)
+## This bash script will be the source and should dictate the deploy flow the first time this repo is provisioned on the pipeline account
+- Provisions 
+    - [KMS key](#KMS)
+    - [SSM secret parameters](#SSMParameters)
+    - [s3 bucket](#s3)
+    - [IAM roles and policy](#Pipelinerolesandpolicy)
+    - [codepipeline and codebuild projects](#Pipeline)
 
 # KMS
 - Change arn of key in deployment_status.yaml when finally provisioning KMS key
@@ -14,6 +19,8 @@ This KMS key will be used to encrypt
     - Slack webhook URL which is referenced in the deployment status lambda
 
 The key error KMS key should be deployed per account with an SSM secret of a slack webhook URL that has a lambda. With this we will be able to plug slack as an error notification method for our lambdas
+
+# SSM Parameters
 
 # S3
 This s3 bucket will be used by codepipeline to store source artifacts, (source artifacts used by codebuild to create build)
