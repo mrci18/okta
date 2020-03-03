@@ -66,7 +66,7 @@ function deploy_pipeline(){
 }
 
 ### Inputs ###
-# read -p "AWS username to administer the KMS key (e.g. bob@matson.com): " username
+read -p "AWS username to administer the KMS key (e.g. bob@matson.com): " username
 
 ## Init config
 service="Okta"
@@ -75,15 +75,15 @@ message="INFO: You are about to input sensitive data; your input will not be ech
 team="Security"
 
 ## Slack config
-# echo -e "\n${message}"
-# read -sp "The webhook URL from slack for errors: " error_webhook
+echo -e "\n${message}"
+read -sp "The webhook URL from slack for errors: " error_webhook
 
-# echo -e "\n\n${message}"
-# read -sp "The webhook URL from slack for security deployment channel: " deployment_webhook
+echo -e "\n\n${message}"
+read -sp "The webhook URL from slack for security deployment channel: " deployment_webhook
 
-# ## Okta inputs
-# echo -e "\n${message}"
-# read -sp "The URL for Okta XML: " okta_xml_url
+## Okta inputs
+echo -e "\n${message}"
+read -sp "The URL for Okta XML: " okta_xml_url
 
 ## For pipeline config
 branch="master"
@@ -97,29 +97,13 @@ echo -e "\n\n${message}"
 read -sp "Github password (i.e The GitHub account password that created the OAuthToken above): " gitPassword
 
 ### Main ###
-# deploy_kms AWSErrorKeyStack infra/kms/security_errors_key.yaml
-# deploy_kms SecurityDeploymentKeyStack infra/kms/security_deployment_key.yaml
-# # set_secure_ssm SECURITY_ERRORS_SLACK ${error_webhook} AWSErrorKeyStack
-# set_secure_ssm SECURITY_DEPLOYMENT_SLACK ${deployment_webhook} SecurityDeploymentKeyStack
-# set_secure_ssm OktaMetadataURL ${okta_xml_url} SecurityDeploymentKeyStack
+deploy_kms SecurityDeploymentKeyStack infra/kms/security_deployment_key.yaml
+set_secure_ssm SECURITY_DEPLOYMENT_SLACK ${deployment_webhook} SecurityDeploymentKeyStack
+set_secure_ssm OktaMetadataURL ${okta_xml_url} SecurityDeploymentKeyStack
 
 # # #Add Monitor CFT
 # # #deploy_regular_cft MonitorDeployerRoleStack monitoring/MonitorDeployerRole.yaml
 
-# deploy_pipeline_bucket
+deploy_pipeline_bucket
 deploy_regular_cft ${service}PipelineRoles infra/pipeline/iam/CodePipelineRole.yaml
 deploy_pipeline
-
-# Put in another script
-# Deploy Service Role
-# function deploy_service_deployer_role(){
-#     echo -e "\n\nDeploying ${service} Deployer Role..."
-#     aws cloudformation deploy \
-#         --no-fail-on-empty-changeset \
-#         --template-file infra/pipeline/iam/OktaDeployerRole.yaml \
-#         --stack-name ${service}DeployerRole \
-#         --parameter-overrides \
-#             Service=${service} \
-#             LService=${lservice} \
-#         --capabilities CAPABILITY_NAMED_IAM
-# }
