@@ -1,0 +1,298 @@
+Resources: 
+### Data Science ###
+  DeveloperRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      ManagedPolicyArns: 
+      - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+      - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+      - arn:aws:iam::aws:policy/AWSCodePipelineFullAccess
+      - arn:aws:iam::aws:policy/AWSWAFFullAccess
+      - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Federated: !Ref SAMLARN
+          Action: sts:AssumeRoleWithSAML
+          Condition:
+            StringEquals: 
+              SAML:aud: "https://signin.aws.amazon.com/saml"
+ 
+  DeveloperCognitoPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: DeveloperCognito
+      Roles: 
+      - !Ref DeveloperRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Cognito
+          Effect: Allow
+          Action:
+          - cognito-identity:*
+          - cognito-idp:*
+          - cognito-sync:*
+          - mobileanalytics:*
+          - iam:ListRoles
+          - iam:ListOpenIdConnectProviders
+          - sns:ListPlatformApplications
+          Resource: "*"
+
+  DeveloperRDSPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: DeveloperCognito
+      Roles: 
+      - !Ref DeveloperRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Logs
+          Effect: Allow
+          Action: 
+          - logs:*
+          Resource: "*"
+##Developer Permission Boundary
+  DeveloperBoundaryPolicy:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      ManagedPolicyName: !Sub ${Service}DeveloperBoundary
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Logs
+          Effect: Allow
+          Action: 
+          - logs:*
+          Resource: "*"
+        - Sid: AmazonDynamoDBFullAccess1
+          Action:
+          - dynamodb:*
+          - dax:*
+          - application-autoscaling:DeleteScalingPolicy
+          - application-autoscaling:DeregisterScalableTarget
+          - application-autoscaling:DescribeScalableTargets
+          - application-autoscaling:DescribeScalingActivities
+          - application-autoscaling:DescribeScalingPolicies
+          - application-autoscaling:PutScalingPolicy
+          - application-autoscaling:RegisterScalableTarget
+          - cloudwatch:DeleteAlarms
+          - cloudwatch:DescribeAlarmHistory
+          - cloudwatch:DescribeAlarms
+          - cloudwatch:DescribeAlarmsForMetric
+          - cloudwatch:GetMetricStatistics
+          - cloudwatch:ListMetrics
+          - cloudwatch:PutMetricAlarm
+          - datapipeline:ActivatePipeline
+          - datapipeline:CreatePipeline
+          - datapipeline:DeletePipeline
+          - datapipeline:DescribeObjects
+          - datapipeline:DescribePipelines
+          - datapipeline:GetPipelineDefinition
+          - datapipeline:ListPipelines
+          - datapipeline:PutPipelineDefinition
+          - datapipeline:QueryObjects
+          - ec2:DescribeVpcs
+          - ec2:DescribeSubnets
+          - ec2:DescribeSecurityGroups
+          - iam:GetRole
+          - iam:ListRoles
+          - kms:DescribeKey
+          - kms:ListAliases
+          - sns:CreateTopic
+          - sns:DeleteTopic
+          - sns:ListSubscriptions
+          - sns:ListSubscriptionsByTopic
+          - sns:ListTopics
+          - sns:Subscribe
+          - sns:Unsubscribe
+          - sns:SetTopicAttributes
+          - lambda:CreateFunction
+          - lambda:ListFunctions
+          - lambda:ListEventSourceMappings
+          - lambda:CreateEventSourceMapping
+          - lambda:DeleteEventSourceMapping
+          - lambda:GetFunctionConfiguration
+          - lambda:DeleteFunction
+          - resource-groups:ListGroups
+          - resource-groups:ListGroupResources
+          - resource-groups:GetGroup
+          - resource-groups:GetGroupQuery
+          - resource-groups:DeleteGroup
+          - resource-groups:CreateGroup
+          - tag:GetResources
+          Effect: Allow
+          Resource: "*"
+        - Sid: AmazonDynamoDBFullAccess2
+          Action: cloudwatch:GetInsightRuleReport
+          Effect: Allow
+          Resource: arn:aws:cloudwatch:*:*:insight-rule/DynamoDBContributorInsights*
+        - Sid: AmazonDynamoDBFullAccess3
+          Action:
+          - iam:PassRole
+          Effect: Allow
+          Resource: "*"
+          Condition:
+            StringLike:
+              iam:PassedToService:
+              - application-autoscaling.amazonaws.com
+              - dax.amazonaws.com
+        - Sid: AmazonDynamoDBFullAccess4
+          Effect: Allow
+          Action:
+          - iam:CreateServiceLinkedRole
+          Resource: "*"
+          Condition:
+            StringEquals:
+              iam:AWSServiceName:
+              - replication.dynamodb.amazonaws.com
+              - dax.amazonaws.com
+              - dynamodb.application-autoscaling.amazonaws.com
+              - contributorinsights.dynamodb.amazonaws.com
+        - Sid: FullWAF
+          Action:
+          - waf:*
+          - waf-regional:*
+          - wafv2:*
+          - elasticloadbalancing:SetWebACL
+          Effect: Allow
+          Resource: "*"
+        - Sid: AWSCodePipelineFullAccess1
+          Action:
+          - codepipeline:*
+          - cloudformation:DescribeStacks
+          - cloudformation:ListChangeSets
+          - cloudtrail:CreateTrail
+          - cloudtrail:DescribeTrails
+          - cloudtrail:GetEventSelectors
+          - cloudtrail:PutEventSelectors
+          - cloudtrail:StartLogging
+          - codecommit:ListRepositories
+          - codedeploy:GetApplication
+          - codedeploy:BatchGetApplications
+          - codedeploy:GetDeploymentGroup
+          - codedeploy:BatchGetDeploymentGroups
+          - codedeploy:ListApplications
+          - codedeploy:ListDeploymentGroups
+          - devicefarm:GetDevicePool
+          - devicefarm:GetProject
+          - devicefarm:ListDevicePools
+          - devicefarm:ListProjects
+          - ecr:DescribeRepositories
+          - ecr:ListImages
+          - ecs:ListClusters
+          - ecs:ListServices
+          - elasticbeanstalk:DescribeApplications
+          - elasticbeanstalk:DescribeEnvironments
+          - events:ListRules
+          - events:ListTargetsByRule
+          - events:DescribeRule
+          - opsworks:DescribeApps
+          - opsworks:DescribeLayers
+          - opsworks:DescribeStacks
+          - s3:GetBucketPolicy
+          - s3:GetBucketVersioning
+          - s3:GetObjectVersion
+          - s3:ListAllMyBuckets
+          - s3:ListBucket
+          - codestar-notifications:ListNotificationRules
+          - codestar-notifications:ListTargets
+          - codestar-notifications:ListTagsforResource
+          - codestar-notifications:ListEventTypes
+          Effect: Allow
+          Resource: "*"
+        - Sid: AWSCodePipelineFullAccess2
+          Action:
+          - s3:GetObject
+          - s3:CreateBucket
+          - s3:PutBucketPolicy
+          Effect: Allow
+          Resource: arn:aws:s3::*:codepipeline-*
+        - Sid: AWSCodePipelineFullAccess3
+          Action:
+          - iam:PassRole
+          Effect: Allow
+          Resource:
+          - arn:aws:iam::*:role/service-role/cwe-role-*
+          Condition:
+            StringEquals:
+              iam:PassedToService:
+              - events.amazonaws.com
+        - Sid: AWSCodePipelineFullAccess4
+          Action:
+          - iam:PassRole
+          Effect: Allow
+          Resource: "*"
+          Condition:
+            StringEquals:
+              iam:PassedToService:
+              - codepipeline.amazonaws.com
+        - Sid: CodeStarNotificationsReadWriteAccess
+          Effect: Allow
+          Action:
+          - codestar-notifications:CreateNotificationRule
+          - codestar-notifications:DescribeNotificationRule
+          - codestar-notifications:UpdateNotificationRule
+          - codestar-notifications:DeleteNotificationRule
+          - codestar-notifications:Subscribe
+          - codestar-notifications:Unsubscribe
+          Resource: "*"
+          Condition:
+            StringLike:
+              codestar-notifications:NotificationsForResource: arn:aws:codepipeline:*
+        - Sid: AWSCodeBuildAdminAccess1
+          Action:
+          - codebuild:*
+          - elasticfilesystem:DescribeFileSystems
+          - events:DeleteRule
+          - events:DisableRule
+          - events:EnableRule
+          - events:ListRuleNamesByTarget
+          - events:PutRule
+          - events:PutTargets
+          - events:RemoveTargets
+          - logs:GetLogEvents
+          - s3:GetBucketLocation
+          Effect: Allow
+          Resource: "*"
+        - Sid: AWSCodeBuildAdminAccess2
+          Action:
+          - logs:DeleteLogGroup
+          Effect: Allow
+          Resource: arn:aws:logs:*:*:log-group:/aws/codebuild/*:log-stream:*
+        - Sid: AWSCodeBuildAdminAccess3
+          Effect: Allow
+          Action:
+          - ssm:PutParameter
+          Resource: arn:aws:ssm:*:*:parameter/CodeBuild/*
+        - Sid: CodeStarNotificationsReadWriteAccess
+          Effect: Allow
+          Action:
+          - codestar-notifications:CreateNotificationRule
+          - codestar-notifications:DescribeNotificationRule
+          - codestar-notifications:UpdateNotificationRule
+          - codestar-notifications:DeleteNotificationRule
+          - codestar-notifications:Subscribe
+          - codestar-notifications:Unsubscribe
+          Resource: "*"
+          Condition:
+            StringLike:
+              codestar-notifications:NotificationsForResource: arn:aws:codebuild:*
+        - Sid: SNSTopicListAccess
+          Effect: Allow
+          Action:
+          - sns:GetTopicAttributes
+          Resource: "*"
+
+Parameters:
+  Service:
+    Description: Name of the service you are deploying, name will be used to reference in IAM role and policy
+    Type: String
+    Default: 
+
+  SAMLARN:
+    Description: The SAML ARN of the IdP in this account
+    Type: String

@@ -126,7 +126,7 @@ Resources:
   CodeBuildRole:
     Type: 'AWS::IAM::Role'
     Properties:
-      RoleName: SecurityCodeBuildRole
+      RoleName: !Sub ${Service}CodeBuildRole
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -362,9 +362,9 @@ Outputs:
     Description: The name of the role
     Value: !Ref CodeBuildRole
     Export:
-      Name: SecurityCodeBuildRoleName
+      Name: !Sub ${Service}CodeBuildRoleName
   CodeBuildRoleArn:
     Description: The arn value of the role for the codebuild
     Value: !GetAtt CodeBuildRole.Arn
     Export:
-      Name: SecurityCodeBuildRoleArn
+      Name: !Sub ${Service}CodeBuildRoleArn

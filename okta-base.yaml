@@ -109,7 +109,7 @@ Resources:
 
 ### Admin ###
   # Should we have admin as actual account on AWS?
-  ProdAdminRole:
+  AdminRole:
     Type: 'AWS::IAM::Role'
     Properties:
       ManagedPolicyArns: 
@@ -126,7 +126,7 @@ Resources:
               SAML:aud: "https://signin.aws.amazon.com/saml"
 
 ### DBA ###
-  ProdDBARole:
+  DBARole:
     Type: 'AWS::IAM::Role'
     Properties:
       ManagedPolicyArns: 
@@ -147,7 +147,7 @@ Resources:
     Properties:
       PolicyName: DBAExtra
       Roles: 
-      - !Ref ProdDBARole
+      - !Ref DBARole
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -167,7 +167,7 @@ Resources:
     Properties:
       PolicyName: DBAIAM
       Roles: 
-      - !Ref ProdDBARole
+      - !Ref DBARole
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -310,7 +310,7 @@ Resources:
           Resource: "*"
         
 ### DevOps ###
-  ProdDevOpsRole:
+  DevOpsRole:
     Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
@@ -329,7 +329,7 @@ Resources:
     Properties:
       PolicyName: DevOps
       Roles: 
-      - !Ref ProdDevOpsRole
+      - !Ref DevOpsRole
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -398,7 +398,7 @@ Resources:
     Properties:
       PolicyName: DevOpsIAM
       Roles: 
-      - !Ref ProdDevOpsRole
+      - !Ref DevOpsRole
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -509,7 +509,7 @@ Resources:
           Resource: "*"
         
 ### Infra ###
-  ProdInfraRole:
+  InfraRole:
     Type: 'AWS::IAM::Role'
     Properties:
       ManagedPolicyArns:
@@ -534,7 +534,7 @@ Resources:
     Properties:
       PolicyName: InfraExtra
       Roles: 
-      - !Ref ProdInfraRole
+      - !Ref InfraRole
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -546,7 +546,7 @@ Resources:
           Resource: "*"
 
 ### Network ###
-  ProdNetworkRole:
+  NetworkRole:
     Type: 'AWS::IAM::Role'
     Properties:
       ManagedPolicyArns:
@@ -584,7 +584,7 @@ Resources:
 ### Security ###
   #Needs to be matured, what is security's responsibility? Security groups
   #Very similar to read only access right now
-  ProdSecurityRole:
+  SecurityRole:
     Type: 'AWS::IAM::Role'
     Properties:
       ManagedPolicyArns: 
@@ -610,7 +610,31 @@ Outputs:
     Value: !Ref IdentityProvider
     Export:
       Name: SAMLIdPARN
-
+  DBARoleRoleName:
+    Description: The name of the role
+    Value: !Ref DBARole
+    Export:
+      Name: DBARoleRoleName
+  DevOpsRoleRoleName:
+    Description: The name of the role
+    Value: !Ref DevOpsRole
+    Export:
+      Name: DevOpsRoleRoleName
+  InfraRoleRoleName:
+    Description: The name of the role
+    Value: !Ref InfraRole
+    Export:
+      Name: InfraRoleRoleName
+  NetworkRoleRoleName:
+    Description: The name of the role
+    Value: !Ref NetworkRole
+    Export:
+      Name: NetworkRoleRoleName
+  ReadOnlyRoleRoleName:
+    Description: The name of the role
+    Value: !Ref ReadOnlyRole
+    Export:
+      Name: ReadOnlyRoleRoleName
 Parameters:
   Service:
     Description: Name of the service you are deploying, name will be used to reference in IAM role and policy
