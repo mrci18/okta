@@ -643,6 +643,7 @@ Parameters:
   MetadataDocument:
     Type: String
     Description: The XML metadata document to use when trusting the Identity Provider
+    NoEcho: true 
     
   SamlProviderName:
     Type: String
