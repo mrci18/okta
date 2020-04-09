@@ -1,5 +1,5 @@
 # Slack
-This slack webhook allows us to get notifications for our deployments happening 
+AThis slack webhook allows us to get notifications for our deployments happening 
 - Create slack app
 - Under that slack app, create a new webhook for #security-deployments channel
 
